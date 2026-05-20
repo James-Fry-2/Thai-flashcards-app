@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.local
+
+# Data (local dev — bind mount)
+data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Build artifacts
+static/
+
+# IDE
+.vscode/
+.cursor/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Claude Code session files
+.claude/
+
+# .NET build artifacts
+ironocr-service/bin/
+ironocr-service/obj/
+
+# Test fixtures (may contain copyrighted content)
+tests/test-files/

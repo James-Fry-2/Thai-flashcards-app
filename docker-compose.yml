@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind-mount data dir for easy backup: cp -r ./data ./backup-YYYYMMDD
+      - ./data:/data
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////data/dek_kard.db
+      MEDIA_DIR: /data/media
+      # IRONOCR_URL: http://ironocr:5050  # enable once IronOCR has a valid deployment license
+    depends_on:
+      ironocr:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  ironocr:
+    build: ./ironocr-service
+    ports:
+      - "5050:5050"
+    environment:
+      IRONOCR_LICENSE_KEY: ${IRONOCR_LICENSE_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5050/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
