@@ -9,6 +9,8 @@ from .review_log import ReviewLog
 from .gamification import UserProfile, Achievement, UserAchievement
 from .card_link import CardLink
 from .topic import Topic, CardTopic
+from .embeddings import CardEmbedding, TopicEmbedding, TagEmbedding
+from .review_session import ReviewSession
 
 __all__ = [
     "Base",
@@ -26,4 +28,8 @@ __all__ = [
     "CardLink",
     "Topic",
     "CardTopic",
+    "CardEmbedding",
+    "TopicEmbedding",
+    "TagEmbedding",
+    "ReviewSession",
 ]

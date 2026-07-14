@@ -160,10 +160,12 @@ async def get_at_risk_cards(
     Cards with high FSRS difficulty that are significantly overdue.
     These are the highest-risk items for forgetting.
     """
-    cutoff = datetime.now(_UTC) - timedelta(days=overdue_days)
+    now = datetime.now(_UTC)
+    cutoff = now - timedelta(days=overdue_days)
     stmt = (
-        select(Card, CardSchedule)
+        select(Card, CardSchedule, Deck.name.label("deck_name"))
         .join(CardSchedule, CardSchedule.card_id == Card.id)
+        .join(Deck, Deck.id == Card.deck_id)
         .where(
             and_(
                 CardSchedule.fsrs_difficulty >= difficulty_threshold,
@@ -181,11 +183,15 @@ async def get_at_risk_cards(
     return [
         {
             **_card_summary(row.Card),
+            "schedule_id": row.CardSchedule.id,
+            "deck_name": row.deck_name,
             "fsrs_difficulty": row.CardSchedule.fsrs_difficulty,
             "fsrs_stability": row.CardSchedule.fsrs_stability,
             "fsrs_state": row.CardSchedule.fsrs_state,
             "fsrs_lapses": row.CardSchedule.fsrs_lapses,
             "fsrs_due": row.CardSchedule.fsrs_due.isoformat() if row.CardSchedule.fsrs_due else None,
+            "last_reviewed": row.CardSchedule.fsrs_last_review.isoformat() if row.CardSchedule.fsrs_last_review else None,
+            "days_overdue": (now - row.CardSchedule.fsrs_due.replace(tzinfo=_UTC)).days if row.CardSchedule.fsrs_due else None,
             "direction": row.CardSchedule.direction,
         }
         for row in rows

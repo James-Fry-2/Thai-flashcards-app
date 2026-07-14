@@ -8,6 +8,7 @@ class LLMTask(str, Enum):
     CARD_GENERATION = "card_generation"
     IMAGE_GENERATION = "image_generation"  # future
     LINK_SUGGESTION = "link_suggestion"
+    CARD_TAGGING = "card_tagging"
 
 
 _registry: Dict[LLMTask, LLMProvider] = {}
@@ -38,6 +39,11 @@ def register_providers(settings) -> None:
             "provider": settings.card_generation_provider,
             "model": settings.card_generation_model,
             "max_tokens": 1024,
+        },
+        LLMTask.CARD_TAGGING: {
+            "provider": settings.card_tagging_provider,
+            "model": settings.card_tagging_model,
+            "max_tokens": 2048,
         },
     }
 

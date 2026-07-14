@@ -20,6 +20,7 @@ from src.utils.file_parser import prepare_file_for_ocr
 from src.llm.registry import get_provider, LLMTask
 from src.llm.prompts.card_generation import build_card_generation_messages
 from src.db.services.card_service import bulk_create_cards, create_card
+from src.db.services import card_tagging_service
 
 from pydantic import BaseModel, ValidationError
 
@@ -111,7 +112,7 @@ async def _process(db, upload: Upload, settings) -> None:
         )
         cloned = []
         for card in source_cards:
-            cloned.append(await create_card(
+            new_card = await create_card(
                 db,
                 deck_id=upload.deck_id,
                 thai=card.thai,
@@ -121,7 +122,9 @@ async def _process(db, upload: Upload, settings) -> None:
                 example_english=card.example_english,
                 card_type=card.card_type,
                 source_upload_id=upload.id,
-            ))
+            )
+            await card_tagging_service.copy_tags_and_topic(db, card.id, new_card.id)
+            cloned.append(new_card)
         upload.cards_created = len(cloned)
         upload.status = "done"
         await db.commit()
@@ -134,6 +137,7 @@ async def _process(db, upload: Upload, settings) -> None:
     await asyncio.to_thread(_fill_paiboon, cards_data)
 
     # 5. Insert cards into the deck
+    created = []
     if upload.deck_id and cards_data:
         created = await bulk_create_cards(
             db,
@@ -141,13 +145,25 @@ async def _process(db, upload: Upload, settings) -> None:
             cards_data=cards_data,
             source_upload_id=upload.id,
         )
-        upload.cards_created = len(created)
-    else:
-        upload.cards_created = 0
+    upload.cards_created = len(created)
 
     upload.status = "done"
     await db.commit()
     logger.info(f"Upload {upload.id}: {upload.cards_created} cards created via {last_engine}")
+
+    # Best-effort tagging — failure here must not flip upload status to "failed"
+    if created:
+        try:
+            tagging_result = await card_tagging_service.tag_cards(db, [c.id for c in created])
+            await db.commit()
+            logger.info(
+                f"Upload {upload.id}: tagged {tagging_result['tagged']} cards "
+                f"(topics_created={tagging_result['topics_created']}, "
+                f"tags_created={tagging_result['tags_created']}, "
+                f"failed={tagging_result['failed']})"
+            )
+        except Exception as tag_exc:
+            logger.warning(f"Upload {upload.id}: tagging failed (cards still created): {tag_exc}")
 
 
 def _fill_paiboon(cards_data: list) -> None:

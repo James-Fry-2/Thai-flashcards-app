@@ -1,5 +1,5 @@
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Text, ForeignKey
+from sqlalchemy import String, Text, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin
 
@@ -26,6 +26,15 @@ class Card(Base, TimestampMixin):
     example_thai: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     example_english: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Thai script analysis (populated at card creation, backfilled via script)
+    syllable_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    tone_pattern: Mapped[Optional[str]] = mapped_column(Text, nullable=True)        # JSON-encoded list[str]
+    consonant_classes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # JSON-encoded list[str]
+    has_cluster: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    has_rare_consonant: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    has_silent_mark: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    script_analysis: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # JSON-encoded list[dict]
 
     card_type: Mapped[str] = mapped_column(
         String(20), default="vocab", nullable=False

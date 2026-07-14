@@ -10,7 +10,7 @@ from src.db.database import get_engine, get_session_factory
 from src.db.models import Base
 from src.db.services.gamification_service import seed_achievements
 from src.llm.registry import register_providers
-from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics
+from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics, search
 
 
 @asynccontextmanager
@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(tags.router, prefix=prefix)
     app.include_router(links.router, prefix=prefix)
     app.include_router(topics.router, prefix=prefix)
+    app.include_router(search.router, prefix=prefix)
 
     @app.get("/health")
     async def health():

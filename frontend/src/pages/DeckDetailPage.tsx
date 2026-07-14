@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { Download, Zap, Trash2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
+import CardDetailDrawer from '../components/CardDetailDrawer'
 import type { Deck, Card } from '../types'
 
 const PAGE_SIZE = 50
@@ -22,6 +23,7 @@ export default function DeckDetailPage() {
   const navigate = useNavigate()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [page, setPage] = useState(0)
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
 
   const offset = page * PAGE_SIZE
 
@@ -31,7 +33,10 @@ export default function DeckDetailPage() {
 
   const { data, isLoading } = useQuery<CardsPage>(
     ['cards', id, page],
-    () => api.get(`/decks/${id}/cards?offset=${offset}&limit=${PAGE_SIZE}`).then((r: { data: CardsPage }) => r.data),
+    () =>
+      api
+        .get(`/decks/${id}/cards?offset=${offset}&limit=${PAGE_SIZE}`)
+        .then((r: { data: CardsPage }) => r.data),
     { keepPreviousData: true }
   )
 
@@ -58,7 +63,9 @@ export default function DeckDetailPage() {
         toast.success('Deck deleted')
         navigate('/decks')
       },
-      onError: () => { toast.error('Failed to delete deck') },
+      onError: () => {
+        toast.error('Failed to delete deck')
+      },
     }
   )
 
@@ -74,7 +81,9 @@ export default function DeckDetailPage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{deck?.name}</h1>
-          {deck?.description && <p className="text-gray-500 text-sm">{deck.description}</p>}
+          {deck?.description && (
+            <p className="text-gray-500 text-sm">{deck.description}</p>
+          )}
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary text-sm" onClick={handleExport}>
@@ -136,25 +145,52 @@ export default function DeckDetailPage() {
                   <th className="px-4 py-3 text-left">Thai</th>
                   <th className="px-4 py-3 text-left">Romanization</th>
                   <th className="px-4 py-3 text-left">English</th>
-                  <th className="px-4 py-3 text-left">Type</th>
+                  <th className="px-4 py-3 text-left">Tags / Topics</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {cards.map((card) => (
-                  <tr key={card.id} className="bg-white hover:bg-gray-50">
-                    <td className="px-4 py-3 thai font-medium text-base">{card.thai}</td>
+                  <tr
+                    key={card.id}
+                    className="bg-white hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setSelectedCardId(card.id)}
+                  >
+                    <td className="px-4 py-3 thai font-medium text-base">
+                      {card.thai}
+                    </td>
                     <td className="px-4 py-3 text-gray-400">{card.romanization}</td>
                     <td className="px-4 py-3">{card.english}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                        {card.card_type}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                          {card.card_type}
+                        </span>
+                        {card.topics?.map((t) => (
+                          <span
+                            key={t.id}
+                            className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full"
+                          >
+                            {t.name}
+                          </span>
+                        ))}
+                        {card.tags?.map((t) => (
+                          <span
+                            key={t.id}
+                            className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                          >
+                            {t.name}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         className="text-gray-300 hover:text-red-500 transition-colors"
-                        onClick={() => deleteCard.mutate(card.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteCard.mutate(card.id)
+                        }}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -169,7 +205,7 @@ export default function DeckDetailPage() {
             <div className="flex items-center justify-center gap-2 pt-2">
               <button
                 className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-40"
-                onClick={() => setPage((p: number) => p - 1)}
+                onClick={() => setPage((p) => p - 1)}
                 disabled={page === 0}
               >
                 <ChevronLeft size={14} /> Prev
@@ -180,7 +216,7 @@ export default function DeckDetailPage() {
                     key={i}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                       i === page
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-brand-600 text-white'
                         : 'text-gray-500 hover:bg-gray-100'
                     }`}
                     onClick={() => setPage(i)}
@@ -200,6 +236,12 @@ export default function DeckDetailPage() {
           )}
         </div>
       )}
+
+      <CardDetailDrawer
+        cardId={selectedCardId}
+        deckId={id}
+        onClose={() => setSelectedCardId(null)}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { Link } from 'react-router-dom'
 import { Plus, BookOpen, Zap, Trash2 } from 'lucide-react'
@@ -93,7 +93,7 @@ function DeckCard({ deck }: { deck: Deck }) {
     }
   )
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (confirming) {

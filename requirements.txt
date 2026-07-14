@@ -38,6 +38,9 @@ loguru==0.7.2
 httpx==0.27.2
 json-repair==0.30.0
 
+# Embeddings (multilingual — required for Thai+English in the same vector space)
+sentence-transformers==3.3.1
+
 # Thai language processing
 pythainlp==5.0.4
 tltk==1.10

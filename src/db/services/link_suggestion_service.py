@@ -1,12 +1,16 @@
 import json
+import numpy as np
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.card import Card
 from src.db.models.card_link import CardLink, LINK_TYPES
+from src.db.models.embeddings import CardEmbedding
 from src.db.models.tag import CardTag, Tag
 from src.llm.registry import get_provider, LLMTask
 from src.llm.prompts.link_suggestion import build_link_suggestion_messages
+from src.utils.embeddings import cosine_similarity_matrix
 
 
 async def suggest_links(
@@ -71,7 +75,7 @@ async def suggest_links(
     )
     deck_cards = list(all_cards_result.scalars().all())
     budget = max_candidates - len(tag_candidates)
-    ranked_deck = _rank_candidates(card.thai, deck_cards, budget)
+    ranked_deck = await _rank_candidates(db, card_id, deck_cards, budget)
 
     candidates = tag_candidates + ranked_deck
 
@@ -97,10 +101,65 @@ async def suggest_links(
     return _parse_suggestions(response.text, valid_card_ids={c.id for c in candidates})
 
 
-def _rank_candidates(target_thai: str, candidates: list, limit: int) -> list:
+async def _rank_candidates(
+    db: AsyncSession,
+    target_card_id: int,
+    candidates: list[Card],
+    limit: int,
+) -> list[Card]:
     """
-    Sort candidates by descending Thai-substring overlap with the target,
-    so the most relevant cards are included within the token budget.
+    Rank candidates by embedding similarity to the target card.
+    Falls back to bigram ranking if embeddings are unavailable for the target or all candidates.
+    """
+    if not candidates:
+        return []
+
+    target_emb = await db.get(CardEmbedding, target_card_id)
+    if target_emb is None:
+        logger.info(
+            f"link_suggestion: card {target_card_id} has no embedding, falling back to bigram ranking"
+        )
+        target_card = await db.get(Card, target_card_id)
+        return _rank_candidates_bigram(
+            target_card.thai if target_card else "", candidates, limit
+        )
+
+    candidate_ids = [c.id for c in candidates]
+    emb_result = await db.execute(
+        select(CardEmbedding).where(CardEmbedding.card_id.in_(candidate_ids))
+    )
+    emb_map: dict[int, bytes] = {e.card_id: e.embedding for e in emb_result.scalars().all()}
+
+    if not emb_map:
+        logger.info(
+            f"link_suggestion: no candidate embeddings found for card {target_card_id}, "
+            "falling back to bigram ranking"
+        )
+        target_card = await db.get(Card, target_card_id)
+        return _rank_candidates_bigram(
+            target_card.thai if target_card else "", candidates, limit
+        )
+
+    query_vec = np.frombuffer(target_emb.embedding, dtype=np.float32).tolist()
+    cards_with_emb = [(c, emb_map[c.id]) for c in candidates if c.id in emb_map]
+    cards_without_emb = [c for c in candidates if c.id not in emb_map]
+
+    corpus = [np.frombuffer(blob, dtype=np.float32).tolist() for _, blob in cards_with_emb]
+    sims = cosine_similarity_matrix(query_vec, corpus)
+
+    scored = sorted(
+        zip(sims, [c for c, _ in cards_with_emb]),
+        key=lambda x: x[0],
+        reverse=True,
+    )
+    # Cards without embeddings go at the end (better than nothing)
+    ranked = [c for _, c in scored] + cards_without_emb
+    return ranked[:limit]
+
+
+def _rank_candidates_bigram(target_thai: str, candidates: list[Card], limit: int) -> list[Card]:
+    """
+    Sort candidates by descending Thai-substring overlap with the target.
     Thai is written without spaces, so we score by shared character bigrams.
     """
     def bigrams(text: str) -> set[str]:
@@ -108,7 +167,7 @@ def _rank_candidates(target_thai: str, candidates: list, limit: int) -> list:
 
     target_bg = bigrams(target_thai)
 
-    def score(card) -> int:
+    def score(card: Card) -> int:
         return len(target_bg & bigrams(card.thai))
 
     return sorted(candidates, key=score, reverse=True)[:limit]

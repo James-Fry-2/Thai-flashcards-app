@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ocr_fallback_model: str = "claude-3-5-haiku-20241022"
     card_generation_provider: str = "claude"
     card_generation_model: str = "claude-opus-4-6"
+    card_tagging_provider: str = "claude"
+    card_tagging_model: str = "claude-haiku-4-5-20251001"
+
+    # Embeddings
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
     # OCR
     ocr_confidence_threshold: float = 0.60

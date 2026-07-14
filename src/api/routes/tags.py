@@ -21,6 +21,10 @@ class TagUpdate(BaseModel):
     description: Optional[str] = None
 
 
+class MergeBody(BaseModel):
+    target_id: int
+
+
 @router.get("")
 async def list_tags(
     parent_id: Optional[int] = Query(None, description="Filter to children of this tag"),
@@ -32,6 +36,12 @@ async def list_tags(
     return await tag_service.list_tags_with_counts(
         db, parent_id=parent_id, search=search, root_only=root_only
     )
+
+
+@router.get("/duplicates")
+async def tag_duplicates(db: AsyncSession = Depends(get_db)):
+    """Return pairs of tags that are likely duplicates."""
+    return await tag_service.find_potential_duplicates(db)
 
 
 @router.get("/tree")
@@ -83,3 +93,21 @@ async def delete_tag(tag_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Tag not found")
     await tag_service.delete_tag(db, tag)
     await db.commit()
+
+
+@router.post("/{source_id}/merge")
+async def merge_tags(
+    source_id: int, payload: MergeBody, db: AsyncSession = Depends(get_db)
+):
+    """Merge source tag into target. Moves all cards, copies missing metadata, deletes source."""
+    if source_id == payload.target_id:
+        raise HTTPException(422, "source_id and target_id must be different")
+    source = await tag_service.get_tag(db, source_id)
+    if not source:
+        raise HTTPException(404, f"Source tag {source_id} not found")
+    target = await tag_service.get_tag(db, payload.target_id)
+    if not target:
+        raise HTTPException(404, f"Target tag {payload.target_id} not found")
+    result = await tag_service.merge_tags(db, source_id, payload.target_id)
+    await db.commit()
+    return result

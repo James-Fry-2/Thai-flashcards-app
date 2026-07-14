@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from sqlalchemy import select, func, and_, not_, exists
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,13 +10,45 @@ from src.db.models.topic import Topic, CardTopic
 from src.db.models.base import utcnow
 
 
+def _normalize_name(name: str) -> str:
+    n = name.strip().lower()
+    n = re.sub(r'[^\w\s]', '', n)
+    n = re.sub(r'\s+', ' ', n).strip()
+    if n.endswith('s') and len(n) > 2:
+        n = n[:-1]
+    return n
+
+
+def _levenshtein(a: str, b: str) -> int:
+    if len(a) < len(b):
+        a, b = b, a
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for ca in a:
+        curr = [prev[0] + 1]
+        for j, cb in enumerate(b):
+            curr.append(min(prev[j] + (0 if ca == cb else 1), prev[j + 1] + 1, curr[j] + 1))
+        prev = curr
+    return prev[-1]
+
+
+def _is_contained_word(shorter: str, longer: str) -> bool:
+    return bool(re.search(r'\b' + re.escape(shorter) + r'\b', longer, re.IGNORECASE))
+
+
 async def list_topics(
-    db: AsyncSession, parent_id: Optional[int] = None
+    db: AsyncSession,
+    parent_id: Optional[int] = None,
+    has_due: bool = False,
 ) -> list[dict]:
     """
     List topics with per-topic card counts and average FSRS difficulty.
     Pass parent_id to drill into subtopics; omit for all topics.
+    Pass has_due=True to restrict to topics with at least one new or due card.
     """
+    now = utcnow()
+
     count_subq = (
         select(CardTopic.topic_id, func.count(CardTopic.card_id).label("card_count"))
         .group_by(CardTopic.topic_id)
@@ -32,19 +65,43 @@ async def list_topics(
         .group_by(CardTopic.topic_id)
         .subquery()
     )
+    new_subq = (
+        select(CardTopic.topic_id, func.count(CardSchedule.id).label("new_count"))
+        .join(Card, Card.id == CardTopic.card_id)
+        .join(CardSchedule, CardSchedule.card_id == Card.id)
+        .where(CardSchedule.fsrs_state == "new")
+        .group_by(CardTopic.topic_id)
+        .subquery()
+    )
+    due_subq = (
+        select(CardTopic.topic_id, func.count(CardSchedule.id).label("due_count"))
+        .join(Card, Card.id == CardTopic.card_id)
+        .join(CardSchedule, CardSchedule.card_id == Card.id)
+        .where(CardSchedule.fsrs_due <= now)
+        .group_by(CardTopic.topic_id)
+        .subquery()
+    )
 
     stmt = (
         select(
             Topic,
             func.coalesce(count_subq.c.card_count, 0).label("card_count"),
             diff_subq.c.avg_difficulty,
+            func.coalesce(new_subq.c.new_count, 0).label("new_count"),
+            func.coalesce(due_subq.c.due_count, 0).label("due_count"),
         )
         .outerjoin(count_subq, count_subq.c.topic_id == Topic.id)
         .outerjoin(diff_subq, diff_subq.c.topic_id == Topic.id)
+        .outerjoin(new_subq, new_subq.c.topic_id == Topic.id)
+        .outerjoin(due_subq, due_subq.c.topic_id == Topic.id)
         .order_by(Topic.sort_order, Topic.name)
     )
     if parent_id is not None:
         stmt = stmt.where(Topic.parent_id == parent_id)
+    if has_due:
+        stmt = stmt.where(
+            (func.coalesce(new_subq.c.new_count, 0) + func.coalesce(due_subq.c.due_count, 0)) > 0
+        )
 
     result = await db.execute(stmt)
     return [
@@ -56,6 +113,8 @@ async def list_topics(
             "sort_order": row.Topic.sort_order,
             "card_count": row.card_count,
             "avg_fsrs_difficulty": round(row.avg_difficulty, 3) if row.avg_difficulty else None,
+            "new_count": row.new_count,
+            "due_count": row.due_count,
         }
         for row in result
     ]
@@ -127,13 +186,115 @@ async def get_cards_by_topic(
     return [_card_summary(c) for c in result.scalars().all()]
 
 
+async def count_cards_by_topic(
+    db: AsyncSession,
+    topic_id: int,
+    card_type: Optional[str] = None,
+    fsrs_state: Optional[str] = None,
+) -> int:
+    stmt = (
+        select(func.count(Card.id))
+        .join(CardTopic, CardTopic.card_id == Card.id)
+        .where(CardTopic.topic_id == topic_id)
+    )
+    if card_type:
+        stmt = stmt.where(Card.card_type == card_type)
+    if fsrs_state:
+        stmt = stmt.join(CardSchedule, CardSchedule.card_id == Card.id).where(
+            CardSchedule.fsrs_state == fsrs_state
+        )
+    return await db.scalar(stmt) or 0
+
+
+async def get_topic_summary(db: AsyncSession, topic_id: int) -> Optional[dict]:
+    """
+    Returns aggregated summary for the browse panel.
+    Three queries: counts, decks_represented, card_type_breakdown.
+    """
+    topic = await db.get(Topic, topic_id)
+    if not topic:
+        return None
+
+    now = utcnow()
+
+    card_count = await db.scalar(
+        select(func.count(CardTopic.card_id)).where(CardTopic.topic_id == topic_id)
+    )
+
+    new_count = await db.scalar(
+        select(func.count(CardSchedule.id))
+        .join(Card, Card.id == CardSchedule.card_id)
+        .join(CardTopic, CardTopic.card_id == Card.id)
+        .where(CardTopic.topic_id == topic_id, CardSchedule.fsrs_state == "new")
+    )
+
+    due_count = await db.scalar(
+        select(func.count(CardSchedule.id))
+        .join(Card, Card.id == CardSchedule.card_id)
+        .join(CardTopic, CardTopic.card_id == Card.id)
+        .where(CardTopic.topic_id == topic_id, CardSchedule.fsrs_due <= now)
+    )
+
+    decks_result = await db.execute(
+        select(
+            Deck.id.label("deck_id"),
+            Deck.name.label("deck_name"),
+            func.count(Card.id).label("card_count"),
+        )
+        .join(Card, Card.deck_id == Deck.id)
+        .join(CardTopic, CardTopic.card_id == Card.id)
+        .where(CardTopic.topic_id == topic_id)
+        .group_by(Deck.id, Deck.name)
+        .order_by(func.count(Card.id).desc())
+        .limit(5)
+    )
+    decks_represented = [
+        {"deck_id": row.deck_id, "deck_name": row.deck_name, "card_count": row.card_count}
+        for row in decks_result
+    ]
+
+    breakdown_result = await db.execute(
+        select(Card.card_type, func.count(Card.id).label("count"))
+        .join(CardTopic, CardTopic.card_id == Card.id)
+        .where(CardTopic.topic_id == topic_id)
+        .group_by(Card.card_type)
+    )
+    card_type_breakdown = {row.card_type: row.count for row in breakdown_result}
+
+    return {
+        "id": topic.id,
+        "name": topic.name,
+        "description": topic.description,
+        "parent_id": topic.parent_id,
+        "card_count": card_count or 0,
+        "new_count": new_count or 0,
+        "due_count": due_count or 0,
+        "decks_represented": decks_represented,
+        "card_type_breakdown": card_type_breakdown,
+    }
+
+
+async def get_or_create_topic(db: AsyncSession, name: str) -> Topic:
+    from src.db.services import embedding_service
+    normalized = name.strip()
+    topic = await db.scalar(
+        select(Topic).where(func.lower(Topic.name) == func.lower(normalized))
+    )
+    if not topic:
+        topic = await create_topic(db, name=normalized, sort_order=0, _embed=False)
+        await embedding_service.embed_topic(db, topic.id)
+    return topic
+
+
 async def create_topic(
     db: AsyncSession,
     name: str,
     description: Optional[str] = None,
     parent_id: Optional[int] = None,
     sort_order: int = 0,
+    _embed: bool = True,
 ) -> Topic:
+    from src.db.services import embedding_service
     now = utcnow()
     topic = Topic(
         name=name,
@@ -145,6 +306,8 @@ async def create_topic(
     )
     db.add(topic)
     await db.flush()
+    if _embed:
+        await embedding_service.embed_topic(db, topic.id)
     return topic
 
 
@@ -156,6 +319,8 @@ async def update_topic(
     parent_id: Optional[int] = None,
     sort_order: Optional[int] = None,
 ) -> Topic:
+    from src.db.services import embedding_service
+    text_changed = name is not None or description is not None
     if name is not None:
         topic.name = name
     if description is not None:
@@ -166,6 +331,8 @@ async def update_topic(
         topic.sort_order = sort_order
     topic.updated_at = utcnow()
     await db.flush()
+    if text_changed:
+        await embedding_service.embed_topic(db, topic.id)
     return topic
 
 
@@ -328,3 +495,135 @@ def _card_summary(card: Card) -> dict:
         "card_type": card.card_type,
         "created_at": card.created_at.isoformat(),
     }
+
+
+async def merge_topics(db: AsyncSession, source_id: int, target_id: int) -> dict:
+    from src.db.services import embedding_service
+    source = await db.get(Topic, source_id)
+    target = await db.get(Topic, target_id)
+
+    # Fix dangling FK: if target's parent points to source, null it before we delete source
+    if target.parent_id == source_id:
+        target.parent_id = None
+        await db.flush()
+
+    target_existing_result = await db.execute(
+        select(CardTopic.card_id).where(CardTopic.topic_id == target_id)
+    )
+    already_in_target = {row[0] for row in target_existing_result}
+
+    source_ct_result = await db.execute(
+        select(CardTopic).where(CardTopic.topic_id == source_id)
+    )
+    source_cts = source_ct_result.scalars().all()
+
+    cards_moved = 0
+    cards_already_present = 0
+
+    for ct in source_cts:
+        if ct.card_id in already_in_target:
+            await db.delete(ct)
+            cards_already_present += 1
+        else:
+            ct.topic_id = target_id
+            cards_moved += 1
+
+    await db.flush()
+
+    if not target.description and source.description:
+        target.description = source.description
+    if target.parent_id is None and source.parent_id is not None:
+        if source.parent_id != target.id:
+            target.parent_id = source.parent_id
+    target.updated_at = utcnow()
+    await db.flush()
+
+    await db.delete(source)
+    await db.flush()
+
+    # Re-embed target since description/parent may have changed during merge
+    await embedding_service.embed_topic(db, target_id, force=True)
+
+    return {
+        "merged": True,
+        "target_id": target_id,
+        "cards_moved": cards_moved,
+        "cards_already_present": cards_already_present,
+    }
+
+
+async def find_potential_duplicates(db: AsyncSession, embedding_threshold: float = 0.85) -> list[dict]:
+    from src.db.services import embedding_service
+
+    count_subq = (
+        select(CardTopic.topic_id, func.count(CardTopic.card_id).label("card_count"))
+        .group_by(CardTopic.topic_id)
+        .subquery()
+    )
+    stmt = (
+        select(Topic, func.coalesce(count_subq.c.card_count, 0).label("card_count"))
+        .outerjoin(count_subq, count_subq.c.topic_id == Topic.id)
+        .order_by(Topic.name)
+    )
+    result = await db.execute(stmt)
+    topics = [
+        {"id": row.Topic.id, "name": row.Topic.name, "card_count": row.card_count}
+        for row in result
+    ]
+
+    # pairs keyed by (min_id, max_id); value holds reasons list and max score
+    pairs: dict[tuple[int, int], dict] = {}
+
+    def _add_pair(a: dict, b: dict, reason: str, score: float) -> None:
+        key = (min(a["id"], b["id"]), max(a["id"], b["id"]))
+        lo = a if a["id"] < b["id"] else b
+        hi = b if a["id"] < b["id"] else a
+        if key not in pairs:
+            pairs[key] = {"topic_a": lo, "topic_b": hi, "reasons": [reason], "score": score}
+        else:
+            if reason not in pairs[key]["reasons"]:
+                pairs[key]["reasons"].append(reason)
+            pairs[key]["score"] = max(pairs[key]["score"], score)
+
+    # Deterministic rules (score=1.0 — high confidence)
+    for i, a in enumerate(topics):
+        a_norm = _normalize_name(a["name"])
+        for b in topics[i + 1:]:
+            b_norm = _normalize_name(b["name"])
+            if a_norm == b_norm:
+                _add_pair(a, b, "same normalized name", 1.0)
+            elif _levenshtein(a_norm, b_norm) <= 2:
+                dist = _levenshtein(a_norm, b_norm)
+                _add_pair(a, b, f"similar name (edit distance {dist})", 1.0)
+            else:
+                a_lower = a["name"].lower()
+                b_lower = b["name"].lower()
+                if len(a_lower) != len(b_lower):
+                    shorter = a_lower if len(a_lower) < len(b_lower) else b_lower
+                    longer = b_lower if len(a_lower) < len(b_lower) else a_lower
+                    if _is_contained_word(shorter, longer):
+                        _add_pair(a, b, "one name contains the other", 1.0)
+
+    # Embedding-based detection (additive)
+    topic_by_id = {t["id"]: t for t in topics}
+    emb_pairs = await embedding_service.find_duplicate_topic_candidates(
+        db, min_similarity=embedding_threshold
+    )
+    for ep in emb_pairs:
+        a = topic_by_id.get(ep["topic_a"]["id"])
+        b = topic_by_id.get(ep["topic_b"]["id"])
+        if a and b:
+            sim = ep["similarity"]
+            _add_pair(a, b, f"embedding similarity: {sim:.2f}", sim)
+
+    # Flatten: join reasons into a single string
+    output = []
+    for p in pairs.values():
+        output.append({
+            "topic_a": p["topic_a"],
+            "topic_b": p["topic_b"],
+            "reason": "; ".join(p["reasons"]),
+            "score": p["score"],
+        })
+
+    return sorted(output, key=lambda p: p["score"], reverse=True)

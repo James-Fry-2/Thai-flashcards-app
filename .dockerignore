@@ -1,0 +1,33 @@
+# Node
+frontend/node_modules
+frontend/.vite
+frontend/dist
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv
+venv
+
+# Git / editor
+.git
+.gitignore
+*.md
+
+# Dev data (mounted at runtime)
+data/
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Test artefacts
+tests/
+scripts/
+
+# Docker itself
+Dockerfile
+docker-compose.yml
+.dockerignore

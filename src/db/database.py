@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import event
 from src.config.settings import get_settings
 
 _engine = None
@@ -12,11 +13,22 @@ def get_engine():
         url = settings.database_url
         kwargs = {"pool_pre_ping": True}
         if url.startswith("sqlite"):
-            kwargs["connect_args"] = {"check_same_thread": False}
+            # timeout=15: retry for up to 15 s when another connection holds a write lock
+            kwargs["connect_args"] = {"check_same_thread": False, "timeout": 15}
         else:
             kwargs["pool_size"] = 5
             kwargs["max_overflow"] = 10
         _engine = create_async_engine(url, **kwargs)
+
+        if url.startswith("sqlite"):
+            # WAL mode lets readers and a writer coexist; cuts lock contention
+            # between background upload tasks and foreground review sessions.
+            @event.listens_for(_engine.sync_engine, "connect")
+            def _set_wal(dbapi_conn, _rec):
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.close()
+
     return _engine
 
 
