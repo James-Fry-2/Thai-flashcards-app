@@ -21,7 +21,12 @@ class Card(Base, TimestampMixin):
 
     # Core content
     thai: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    romanization: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    romanization: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # effective/display (resolved)
+    romanization_source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # LLM-copied from material
+    romanization_paiboon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    romanization_rtgs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    romanization_ipa: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    romanization_manual: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # user hand-edit; top precedence
     english: Mapped[str] = mapped_column(Text, nullable=False)
     example_thai: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     example_english: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -35,6 +40,10 @@ class Card(Base, TimestampMixin):
     has_rare_consonant: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     has_silent_mark: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     script_analysis: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # JSON-encoded list[dict]
+
+    # Compound breakdown (populated at card creation, backfilled via script)
+    compound_breakdown: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON-encoded list[dict]
+    is_compound: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     card_type: Mapped[str] = mapped_column(
         String(20), default="vocab", nullable=False

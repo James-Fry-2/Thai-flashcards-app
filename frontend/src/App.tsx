@@ -8,6 +8,10 @@ import ReviewPage from './pages/ReviewPage'
 import TopicsPage from './pages/TopicsPage'
 import AtRiskPage from './pages/AtRiskPage'
 import SearchPage from './pages/SearchPage'
+import SettingsPage from './pages/SettingsPage'
+import SplitReviewPage from './pages/SplitReviewPage'
+import BookChaptersPage from './pages/BookChaptersPage'
+import BooksPage from './pages/BooksPage'
 
 export default function App() {
   return (
@@ -19,6 +23,10 @@ export default function App() {
         <Route path="/decks/:deckId" element={<DeckDetailPage />} />
         <Route path="/decks/:deckId/review" element={<ReviewPage />} />
         <Route path="/upload" element={<UploadPage />} />
+        <Route path="/books" element={<BooksPage />} />
+        <Route path="/uploads/:uploadId/split-review" element={<SplitReviewPage />} />
+        <Route path="/uploads/:uploadId/chapters" element={<BookChaptersPage />} />
+        <Route path="/uploads/:uploadId/review" element={<ReviewPage />} />
         <Route path="/topics" element={<TopicsPage />} />
         <Route path="/topics/:topicId" element={<TopicsPage />} />
         <Route path="/topics/:topicId/review" element={<ReviewPage />} />
@@ -27,6 +35,7 @@ export default function App() {
         <Route path="/at-risk/review" element={<ReviewPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/search/review" element={<ReviewPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   )

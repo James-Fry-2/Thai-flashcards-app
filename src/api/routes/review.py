@@ -27,6 +27,16 @@ class FromCardsRequest(BaseModel):
 
 
 def _build_card_payload(c: Card, s: CardSchedule) -> dict:
+    import json as _json
+
+    def _parse(v):
+        if v is None:
+            return None
+        try:
+            return _json.loads(v)
+        except Exception:
+            return None
+
     return {
         "id": c.id,
         "card_id": c.id,
@@ -38,6 +48,8 @@ def _build_card_payload(c: Card, s: CardSchedule) -> dict:
         "example_english": c.example_english,
         "card_type": c.card_type,
         "fsrs_state": s.fsrs_state,
+        "is_compound": c.is_compound,
+        "compound_breakdown": _parse(c.compound_breakdown),
     }
 
 
@@ -82,6 +94,7 @@ async def get_due_summary(db: AsyncSession = Depends(get_db)):
 async def start_session(
     deck_id: Optional[int] = Query(None),
     topic_id: Optional[int] = Query(None),
+    upload_id: Optional[int] = Query(None),
     scope: Optional[str] = Query(None),
     strategy: str = Query("due"),
     direction: str = Query("th_to_en"),
@@ -90,12 +103,13 @@ async def start_session(
     scope_count = sum([
         deck_id is not None,
         topic_id is not None,
+        upload_id is not None,
         scope == "library",
     ])
     if scope_count != 1:
         raise HTTPException(
             422,
-            "Provide exactly one of: deck_id=N, topic_id=N, or scope=library",
+            "Provide exactly one of: deck_id=N, topic_id=N, upload_id=N, or scope=library",
         )
 
     # Mark any sessions left open longer than 24h as abandoned (housekeeping on natural traffic).
@@ -108,6 +122,12 @@ async def start_session(
     elif topic_id is not None:
         card_schedule_pairs = await card_service.get_due_cards_for_topic(db, topic_id, limit=20, direction=direction)
         session_scope, scope_id, session_strategy = "topic", topic_id, None
+
+    elif upload_id is not None:
+        card_schedule_pairs = await card_service.get_due_cards_for_upload(
+            db, upload_id, limit=200, direction=direction
+        )
+        session_scope, scope_id, session_strategy = "upload", upload_id, None
 
     else:  # scope == "library"
         if strategy not in ("due", "at_risk", "mixed"):

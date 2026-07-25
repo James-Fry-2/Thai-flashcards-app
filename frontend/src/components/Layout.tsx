@@ -1,11 +1,16 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Upload, Layers, Tag, AlertTriangle, Search } from 'lucide-react'
+import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen } from 'lucide-react'
 import { clsx } from 'clsx'
+import { useActiveUploads } from '../hooks/useActiveUploads'
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { data: activeUploads = [] } = useActiveUploads()
+  const processingCount = activeUploads.filter(
+    (u) => u.status === 'pending' || u.status === 'processing'
+  ).length
 
   const onSearchPage = location.pathname === '/search'
   const urlQ = onSearchPage ? new URLSearchParams(location.search).get('q') ?? '' : ''
@@ -61,8 +66,19 @@ export default function Layout() {
           <NavItem to="/decks" icon={<Layers size={16} />} label="Decks" />
           <NavItem to="/topics" icon={<Tag size={16} />} label="Topics" />
           <NavItem to="/at-risk" icon={<AlertTriangle size={16} />} label="At-risk" />
+          <NavItem to="/books" icon={<BookOpen size={16} />} label="Books" />
           <NavItem to="/upload" icon={<Upload size={16} />} label="Upload" />
+          <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" />
         </div>
+        {processingCount > 0 && (
+          <NavLink
+            to="/upload"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 border border-brand-200"
+          >
+            <Loader2 size={12} className="animate-spin" />
+            {processingCount === 1 ? '1 upload processing…' : `${processingCount} uploads processing…`}
+          </NavLink>
+        )}
         <div className="ml-auto relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input

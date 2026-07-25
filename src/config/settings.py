@@ -32,6 +32,37 @@ class Settings(BaseSettings):
 
     # Uploads
     max_upload_size_mb: int = 20
+    max_book_upload_size_mb: int = 300
+
+    # PDF text extraction (§6): pages with >= this many chars skip rasterize + OCR
+    pdf_text_min_chars: int = 40
+
+    # Card generation chunking (§7): text exceeding this triggers per-chunk generation
+    card_generation_char_budget: int = 12000
+
+    # Chapter detection — Tier 1 thresholds
+    chapter_font_size_ratio: float = 1.8       # span size ≥ ratio × modal body size → font_outlier
+    chapter_sparse_percentile: int = 10        # char count below Nth percentile → sparse_page
+    chapter_boundary_threshold: float = 0.45  # weighted score above this → boundary candidate
+    chapter_topic_shift_enabled: bool = True   # enable embedding-based topic-shift signal
+    chapter_topic_shift_threshold: float = 0.50  # cosine similarity below this → topic_shift
+    chapter_example_match_threshold: float = 0.75  # teach-by-example score above this → proposed match
+
+    # Chapter detection — signal weights (must sum to something sensible; see chapter_signals.py)
+    chapter_weight_font_outlier: float = 0.35
+    chapter_weight_sparse_page: float = 0.25
+    chapter_weight_template_match: float = 0.30
+    chapter_weight_header_change: float = 0.20
+    chapter_weight_recto_start: float = 0.05
+    chapter_weight_lexical_hit: float = 0.40
+    chapter_weight_topic_shift: float = 0.20
+
+    # Thumbnail rendering
+    chapter_thumbnail_dpi: int = 50  # low-res thumbnail DPI for the review filmstrip
+
+    # Compound breakdown
+    compound_gloss_llm_fallback: bool = False  # default off — keeps bulk ingestion free
+    compound_max_syllables: int = 3            # inputs with more syllables are skipped
 
     # App
     secret_key: str = "change-me"

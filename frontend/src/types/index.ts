@@ -19,11 +19,23 @@ export interface CardTopicRef {
   name: string
 }
 
+export interface CompoundPart {
+  thai: string
+  romanization?: string | null
+  gloss?: string | null
+  gloss_source?: 'card' | 'lexicon' | 'llm' | null
+}
+
 export interface Card {
   id: number
   deck_id: number
   thai: string
   romanization?: string
+  romanization_source?: string
+  romanization_paiboon?: string
+  romanization_rtgs?: string
+  romanization_ipa?: string
+  romanization_manual?: string
   english: string
   example_thai?: string
   example_english?: string
@@ -32,6 +44,14 @@ export interface Card {
   created_at: string
   tags: CardTagRef[]
   topics: CardTopicRef[]
+  is_compound?: boolean | null
+  compound_breakdown?: CompoundPart[] | null
+}
+
+export interface UserPreferences {
+  romanization_display: 'source' | 'paiboon' | 'rtgs' | 'ipa'
+  romanization_fallback: 'paiboon' | 'rtgs' | 'ipa' | 'none'
+  updated_at: string
 }
 
 export interface ScriptSyllable {
@@ -77,14 +97,101 @@ export interface ReviewCard extends Card {
   fsrs_state: string
 }
 
+/** New boundary format — page_end is ALWAYS derived, never stored */
+export interface ChapterBoundary {
+  idx: number
+  page_start: number      // 1-indexed
+  page_end?: number       // derived: only present in API responses, not submitted to PUT/POST
+  title_en: string | null
+  title_th: string | null
+  include: boolean
+  confidence: number
+  signals: string[]       // e.g. ["font_outlier", "sparse_page", "template_match"]
+  source: 'auto' | 'structure' | 'user' | 'example_match'
+  child_upload_id: number | null
+  // Enriched in GET /uploads/{id} children list
+  status?: string | null
+  stage?: string | null
+  cards_created?: number
+  card_count?: number
+  due_count?: number
+}
+
+/** Per-page signal data from the ensemble detector */
+export interface PageSignals {
+  char_count: number
+  font_outlier: boolean
+  sparse_page: boolean
+  template_match: boolean
+  header_change: boolean
+  recto_start: boolean
+  lexical_hit: boolean
+  topic_shift: boolean
+  heuristic_score: number
+  top_span_text: string | null
+  top_thai_span_text: string | null
+  image_xrefs: number[]
+  layout_fingerprint: string
+  header_text: string | null
+}
+
+/** Response from GET /uploads/{id}/split */
+export interface SplitData {
+  id: number
+  page_count: number
+  boundaries: ChapterBoundary[]
+  page_signals: Record<string, PageSignals>  // 1-indexed string keys
+  source_title: string | null
+  stage: string
+  status: string
+}
+
+/** Legacy chapter map entry (kept for backwards compat) */
+export interface ChapterMapEntry {
+  idx: number
+  chapter_label: string
+  section_label?: string | null
+  page_start: number
+  page_end: number
+  child_upload_id?: number | null
+  source_filename?: string
+  status?: string | null
+  stage?: string | null
+  cards_created?: number
+}
+
+/** Helper to build the thumbnail URL for a page */
+export function thumbnailUrl(uploadId: number, page: number): string {
+  return `/api/uploads/${uploadId}/pages/${page}/thumbnail`
+}
+
 export interface Upload {
   id: number
   filename: string
-  status: 'pending' | 'processing' | 'done' | 'failed'
+  kind: 'single' | 'book_parent' | 'chapter_child'
+  parent_upload_id?: number | null
+  status: 'pending' | 'processing' | 'done' | 'failed' | 'awaiting_confirmation'
+  stage: 'queued' | 'ocr' | 'generating' | 'tagging' | 'complete' | 'splitting' | 'awaiting_confirmation' | 'dispatching'
   deck_id?: number
+  source_title?: string | null
+  chapter_label?: string | null
+  section_label?: string | null
   cards_created: number
+  total_pages?: number
+  pages_processed: number
+  attempts: number
   ocr_engine_used?: string
+  ocr_confidence?: number
   error_message?: string
+  created_at: string
+  // book_parent rollup (present on GET /uploads/{id} and /uploads/active)
+  chapter_map?: ChapterBoundary[]   // new format (boundaries)
+  page_count?: number
+  chapters_total?: number
+  chapters_complete?: number
+  chapters_failed?: number
+  cards_created_total?: number
+  children?: ChapterBoundary[]
 }
 
 export interface Achievement {

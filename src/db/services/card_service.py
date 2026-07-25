@@ -8,6 +8,7 @@ from src.db.models.card_schedule import CardSchedule
 from src.db.models.deck import Deck
 from src.db.models.tag import Tag, CardTag
 from src.utils.thai_analysis import analyze_thai
+from src.utils.compound import compute_compound_breakdown
 from datetime import datetime, timedelta, timezone
 
 
@@ -39,6 +40,11 @@ async def create_card(
     thai: str,
     english: str,
     romanization: Optional[str] = None,
+    romanization_source: Optional[str] = None,
+    romanization_paiboon: Optional[str] = None,
+    romanization_rtgs: Optional[str] = None,
+    romanization_ipa: Optional[str] = None,
+    romanization_manual: Optional[str] = None,
     example_thai: Optional[str] = None,
     example_english: Optional[str] = None,
     card_type: str = "vocab",
@@ -47,11 +53,17 @@ async def create_card(
 ) -> Card:
     from src.db.services import embedding_service
     analysis = analyze_thai(thai)
+    breakdown, is_compound = await compute_compound_breakdown(db, thai, syllable_count=analysis["syllable_count"])
     card = Card(
         deck_id=deck_id,
         thai=thai,
         english=english,
         romanization=romanization,
+        romanization_source=romanization_source,
+        romanization_paiboon=romanization_paiboon,
+        romanization_rtgs=romanization_rtgs,
+        romanization_ipa=romanization_ipa,
+        romanization_manual=romanization_manual,
         example_thai=example_thai,
         example_english=example_english,
         card_type=card_type,
@@ -63,6 +75,8 @@ async def create_card(
         has_rare_consonant=analysis["has_rare_consonant"],
         has_silent_mark=analysis["has_silent_mark"],
         script_analysis=json.dumps(analysis["script_analysis"], ensure_ascii=False),
+        compound_breakdown=json.dumps(breakdown, ensure_ascii=False) if breakdown is not None else None,
+        is_compound=is_compound,
     )
     db.add(card)
     try:
@@ -105,6 +119,11 @@ async def bulk_create_cards(db: AsyncSession, deck_id: int, cards_data: list, so
             thai=data["thai"],
             english=data["english"],
             romanization=data.get("romanization"),
+            romanization_source=data.get("romanization_source"),
+            romanization_paiboon=data.get("romanization_paiboon"),
+            romanization_rtgs=data.get("romanization_rtgs"),
+            romanization_ipa=data.get("romanization_ipa"),
+            romanization_manual=data.get("romanization_manual"),
             example_thai=data.get("example_thai"),
             example_english=data.get("example_english"),
             card_type=data.get("card_type", "vocab"),
@@ -202,6 +221,68 @@ async def get_due_cards_for_topic(
         .limit(limit)
     )
     return [(row[0], row[1]) for row in result.all()]
+
+
+async def get_due_cards_for_upload(
+    db: AsyncSession, upload_id: int, limit: int = 200, direction: str = "th_to_en"
+) -> List[tuple[Card, CardSchedule]]:
+    """Due or new cards whose source is a specific upload (chapter_child), ordered by due date."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Card, CardSchedule)
+        .join(CardSchedule, CardSchedule.card_id == Card.id)
+        .where(
+            Card.source_upload_id == upload_id,
+            CardSchedule.direction == direction,
+            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
+        )
+        .order_by(
+            (CardSchedule.fsrs_state == "new").asc(),
+            CardSchedule.fsrs_due.asc(),
+        )
+        .limit(limit)
+    )
+    return [(row[0], row[1]) for row in result.all()]
+
+
+async def get_upload_card_counts(
+    db: AsyncSession, upload_ids: list[int]
+) -> dict[int, dict]:
+    """
+    Return {upload_id: {"card_count": N, "due_count": M}} for a list of upload IDs.
+    Single aggregated query — safe to call with 20+ IDs.
+    """
+    if not upload_ids:
+        return {}
+
+    now = datetime.now(timezone.utc)
+
+    total_rows = await db.execute(
+        select(Card.source_upload_id, func.count(Card.id).label("cnt"))
+        .where(Card.source_upload_id.in_(upload_ids))
+        .group_by(Card.source_upload_id)
+    )
+    card_counts = {row[0]: row[1] for row in total_rows.all()}
+
+    due_rows = await db.execute(
+        select(Card.source_upload_id, func.count(CardSchedule.id).label("cnt"))
+        .join(CardSchedule, CardSchedule.card_id == Card.id)
+        .where(
+            Card.source_upload_id.in_(upload_ids),
+            CardSchedule.direction == "th_to_en",
+            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
+        )
+        .group_by(Card.source_upload_id)
+    )
+    due_counts = {row[0]: row[1] for row in due_rows.all()}
+
+    return {
+        uid: {
+            "card_count": card_counts.get(uid, 0),
+            "due_count": due_counts.get(uid, 0),
+        }
+        for uid in upload_ids
+    }
 
 
 async def get_due_cards_library_wide(

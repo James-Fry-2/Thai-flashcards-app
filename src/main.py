@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
@@ -10,7 +11,8 @@ from src.db.database import get_engine, get_session_factory
 from src.db.models import Base
 from src.db.services.gamification_service import seed_achievements
 from src.llm.registry import register_providers
-from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics, search
+from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics, search, preferences
+from src.tasks.upload_worker import recover_interrupted, run_worker_loop
 
 
 @asynccontextmanager
@@ -37,7 +39,21 @@ async def lifespan(app: FastAPI):
     register_providers(settings)
     logger.info("LLM providers registered")
 
+    # Reset any uploads interrupted by a prior server crash, then start worker
+    async with factory() as db:
+        await recover_interrupted(db)
+
+    worker_task = asyncio.create_task(run_worker_loop())
+    logger.info("Upload worker started")
+
     yield
+
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("Upload worker stopped")
 
     await get_engine().dispose()
     logger.info("Shutdown complete")
@@ -72,14 +88,13 @@ def create_app() -> FastAPI:
     app.include_router(links.router, prefix=prefix)
     app.include_router(topics.router, prefix=prefix)
     app.include_router(search.router, prefix=prefix)
+    app.include_router(preferences.router, prefix=prefix)
 
     @app.get("/health")
     async def health():
         return {"status": "ok"}
 
     # Serve React frontend (built into ./static in Docker; skip in dev)
-    # A catch-all route is used instead of StaticFiles mount so that SPA routes
-    # like /dashboard are served index.html rather than a 404.
     static_dir = Path("static")
     if static_dir.exists():
         @app.get("/{full_path:path}")

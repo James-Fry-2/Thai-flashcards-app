@@ -1,8 +1,10 @@
 """
 Converts uploaded files (PDF or image) into a list of image bytes for the OCR pipeline.
+Also provides text-layer extraction for digital PDFs (§6 — skips OCR on text pages).
 """
 import io
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Optional, Tuple
 from PIL import Image
 
 MAX_DIMENSION = 2400  # px — resize larger images to reduce OCR memory overhead
@@ -48,6 +50,85 @@ def pdf_to_images(pdf_bytes: bytes) -> List[Tuple[bytes, str]]:
         normalized, media_type = normalize_image(buf.getvalue())
         result.append((normalized, media_type))
     return result
+
+
+def extract_pdf_text_layer(file_path: Path) -> List[str]:
+    """
+    Extract the text layer from each page of a PDF using PyMuPDF (fitz).
+    Returns a list of strings — one per page — which may be empty for scanned pages.
+
+    Used in the OCR stage to skip rasterise+OCR for pages with sufficient text
+    (see pdf_text_min_chars in Settings).
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return []
+
+    try:
+        doc = fitz.open(str(file_path))
+    except Exception:
+        return []
+
+    pages_text: List[str] = []
+    for page in doc:
+        try:
+            text = page.get_text()
+        except Exception:
+            text = ""
+        pages_text.append(text or "")
+    doc.close()
+    return pages_text
+
+
+def extract_pdf_toc(file_path: Path) -> List[dict]:
+    """
+    Extract the PDF outline (Table of Contents) using PyMuPDF.
+    Returns a list of {level, title, page} dicts (0-indexed page numbers).
+    """
+    try:
+        import fitz
+    except ImportError:
+        return []
+
+    try:
+        doc = fitz.open(str(file_path))
+        toc = doc.get_toc(simple=True)  # [[level, title, page], ...]
+        doc.close()
+    except Exception:
+        return []
+
+    return [{"level": entry[0], "title": entry[1], "page": max(0, entry[2] - 1)} for entry in toc]
+
+
+def slice_pdf(src_path: Path, page_start: int, page_end: int, dst_path: Path) -> None:
+    """
+    Extract pages [page_start, page_end] (0-indexed, inclusive) from src_path
+    into a new PDF at dst_path using PyMuPDF.
+    """
+    try:
+        import fitz
+    except ImportError:
+        raise RuntimeError("PyMuPDF (fitz) is required for PDF slicing")
+
+    src = fitz.open(str(src_path))
+    dst = fitz.open()
+    dst.insert_pdf(src, from_page=page_start, to_page=page_end)
+    dst.save(str(dst_path))
+    dst.close()
+    src.close()
+
+
+def get_pdf_page_count(file_path: Path) -> Optional[int]:
+    """Return the total number of pages in a PDF, or None on error."""
+    try:
+        import fitz
+        doc = fitz.open(str(file_path))
+        count = doc.page_count
+        doc.close()
+        return count
+    except Exception:
+        return None
 
 
 def prepare_file_for_ocr(file_bytes: bytes, filename: str) -> List[Tuple[bytes, str]]:

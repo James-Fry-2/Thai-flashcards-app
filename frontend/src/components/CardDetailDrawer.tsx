@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { X, Plus, ArrowRight, ChevronLeft } from 'lucide-react'
+import { X, Plus, ArrowRight, ChevronLeft, Pencil, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import type { CardDetail, SimilarCard, Tag, Topic } from '../types'
+import type { CardDetail, SimilarCard, Tag, Topic, CompoundPart } from '../types'
 
 interface Props {
   cardId: number | null
@@ -40,6 +40,12 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
     ['similar-cards', cardId],
     () => api.get(`/cards/${cardId}/similar?limit=10`).then((r) => r.data),
     { enabled: cardId !== null }
+  )
+
+  const updateCard = useMutation(
+    (patch: Record<string, unknown>) =>
+      api.patch(`/cards/${cardId}`, patch).then((r) => r.data),
+    { onSuccess: invalidate },
   )
 
   const removeTag = useMutation(
@@ -187,9 +193,21 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                 </section>
               )}
 
+              {/* Romanization schemes */}
+              <RomanizationSection
+                card={card}
+                onSaveManual={(value) => updateCard.mutate({ romanization: value })}
+                isSaving={updateCard.isLoading}
+              />
+
               {/* Script analysis */}
               {card.script_analysis && card.script_analysis.length > 0 && (
                 <ScriptAnalysisSection syllables={card.script_analysis} />
+              )}
+
+              {/* Compound breakdown */}
+              {card.compound_breakdown && card.compound_breakdown.length > 0 && (
+                <BreakdownSection parts={card.compound_breakdown} />
               )}
 
               {/* Links */}
@@ -446,6 +464,112 @@ function TopicCombobox({
   )
 }
 
+function RomanizationSection({
+  card,
+  onSaveManual,
+  isSaving,
+}: {
+  card: CardDetail
+  onSaveManual: (value: string) => void
+  isSaving: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const schemes: { label: string; value?: string; isManual?: boolean }[] = [
+    { label: 'Source', value: card.romanization_source },
+    { label: 'Paiboon+', value: card.romanization_paiboon },
+    { label: 'RTGS', value: card.romanization_rtgs },
+    { label: 'IPA', value: card.romanization_ipa },
+    { label: 'Manual override', value: card.romanization_manual, isManual: true },
+  ]
+
+  const hasAny = schemes.some((s) => s.value)
+
+  function startEdit() {
+    setDraft(card.romanization_manual ?? '')
+    setEditing(true)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  function commit() {
+    onSaveManual(draft)
+    setEditing(false)
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Romanization
+        </h3>
+        <button
+          onClick={startEdit}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+          title="Set manual override"
+        >
+          <Pencil size={11} />
+          Override
+        </button>
+      </div>
+
+      {editing ? (
+        <div className="flex gap-2 mb-3">
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit()
+              if (e.key === 'Escape') setEditing(false)
+            }}
+            placeholder="Manual romanization…"
+            disabled={isSaving}
+            className="flex-1 text-xs border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <button
+            onClick={commit}
+            disabled={isSaving}
+            className="p-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+            title="Save"
+          >
+            <Check size={13} />
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
+            title="Cancel"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ) : null}
+
+      {hasAny ? (
+        <dl className="space-y-1">
+          {schemes.map((s) =>
+            s.value ? (
+              <div key={s.label} className="flex items-baseline gap-2">
+                <dt className="text-[10px] font-medium text-gray-400 w-24 shrink-0">{s.label}</dt>
+                <dd
+                  className={`text-xs ${
+                    s.isManual ? 'text-brand-700 font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  {s.value}
+                </dd>
+              </div>
+            ) : null
+          )}
+        </dl>
+      ) : (
+        <p className="text-xs text-gray-400">No romanization stored yet.</p>
+      )}
+    </section>
+  )
+}
+
 function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; tone?: string; [key: string]: unknown }[] }) {
   return (
     <section>
@@ -463,6 +587,32 @@ function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; 
               <p className="text-xs text-gray-400 mt-0.5">{String(s.tone)}</p>
             )}
           </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function BreakdownSection({ parts }: { parts: CompoundPart[] }) {
+  return (
+    <section>
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        Breakdown
+      </h3>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        {parts.map((part, i) => (
+          <span key={i} className="flex items-center gap-1.5">
+            {i > 0 && <span className="text-gray-300 text-xs">+</span>}
+            <span className="inline-flex flex-col items-center bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 text-center min-w-[48px]">
+              <span className="thai text-sm font-medium text-gray-800">{part.thai}</span>
+              {part.romanization && (
+                <span className="text-[10px] text-gray-400 mt-0.5">{part.romanization}</span>
+              )}
+              {part.gloss && (
+                <span className="text-[10px] text-amber-700 font-medium mt-0.5">{part.gloss}</span>
+              )}
+            </span>
+          </span>
         ))}
       </div>
     </section>

@@ -9,7 +9,7 @@ import api from '../services/api'
 import type { ReviewCard, Deck, TopicSummary } from '../types'
 
 type SessionState = 'loading' | 'reviewing' | 'done'
-type Scope = 'deck' | 'topic' | 'library' | 'custom'
+type Scope = 'deck' | 'topic' | 'library' | 'custom' | 'upload'
 
 interface Session {
   session_id: number
@@ -38,11 +38,12 @@ function detectScope(pathname: string): Scope {
   if (pathname.startsWith('/at-risk/review') || pathname.startsWith('/search/review')) return 'custom'
   if (pathname.startsWith('/review/library')) return 'library'
   if (pathname.includes('/topics/')) return 'topic'
+  if (/\/uploads\/\d+\/review/.test(pathname)) return 'upload'
   return 'deck'
 }
 
 export default function ReviewPage() {
-  const { deckId, topicId } = useParams<{ deckId?: string; topicId?: string }>()
+  const { deckId, topicId, uploadId } = useParams<{ deckId?: string; topicId?: string; uploadId?: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = (location.state ?? {}) as LocationState
@@ -50,7 +51,8 @@ export default function ReviewPage() {
   const scope = detectScope(location.pathname)
   const isTopicScope = scope === 'topic'
   const isDeckScope = scope === 'deck'
-  const scopeId = isTopicScope ? Number(topicId) : isDeckScope ? Number(deckId) : undefined
+  const isUploadScope = scope === 'upload'
+  const scopeId = isTopicScope ? Number(topicId) : isDeckScope ? Number(deckId) : isUploadScope ? Number(uploadId) : undefined
 
   // Deck / topic metadata (only loaded when relevant)
   const { data: deck } = useQuery<Deck>(
@@ -70,8 +72,8 @@ export default function ReviewPage() {
   const scopeTitle =
     scope === 'library'
       ? `Today's review`
-      : scope === 'custom'
-      ? (locationState.title ?? 'At-risk cards')
+      : scope === 'custom' || isUploadScope
+      ? (locationState.title ?? (isUploadScope ? 'Chapter review' : 'At-risk cards'))
       : isTopicScope
       ? topicSummary?.name
       : deck?.name
@@ -90,6 +92,8 @@ export default function ReviewPage() {
       ? '/dashboard'
       : scope === 'custom'
       ? (locationState.backTo ?? '/at-risk')
+      : isUploadScope
+      ? (locationState.backTo ?? `/uploads/${scopeId}/chapters`)
       : isTopicScope
       ? `/topics/${scopeId}`
       : `/decks/${scopeId}`
@@ -126,6 +130,8 @@ export default function ReviewPage() {
       param = `scope=library&strategy=${strategy}`
     } else if (isTopicScope) {
       param = `topic_id=${scopeId}`
+    } else if (isUploadScope) {
+      param = `upload_id=${scopeId}`
     } else {
       param = `deck_id=${scopeId}`
     }
@@ -140,7 +146,7 @@ export default function ReviewPage() {
       setSession(data)
       setState('reviewing')
     })
-  }, [scope, scopeId, strategy])
+  }, [scope, scopeId, strategy, isUploadScope])
 
   const currentCard = session?.cards[currentIndex]
 
@@ -206,6 +212,8 @@ export default function ReviewPage() {
         ? 'Back to dashboard'
         : scope === 'custom'
         ? (locationState.backLabel ?? 'Back to at-risk')
+        : isUploadScope
+        ? 'Back to chapters'
         : isTopicScope
         ? 'Back to topic'
         : 'Back to deck'
@@ -234,7 +242,7 @@ export default function ReviewPage() {
       <div className="flex items-center justify-between text-sm text-gray-400">
         <Link to={backTo} className="flex items-center gap-1 hover:text-gray-600">
           <ArrowLeft size={14} />
-          {scope === 'library' ? 'Dashboard' : scope === 'custom' ? (locationState.backShortLabel ?? 'At-risk') : isTopicScope ? 'Topic' : 'Deck'}
+          {scope === 'library' ? 'Dashboard' : scope === 'custom' ? (locationState.backShortLabel ?? 'At-risk') : isUploadScope ? 'Chapters' : isTopicScope ? 'Topic' : 'Deck'}
         </Link>
         <div className="text-center">
           <span className="text-gray-600 font-medium block truncate max-w-[200px]">

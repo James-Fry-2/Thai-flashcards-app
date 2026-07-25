@@ -1,10 +1,31 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { Card } from '../types'
+import { motion } from 'framer-motion'
+import { Card, CompoundPart } from '../types'
 
 interface Props {
   card: Card
   isFlipped: boolean
   onFlip: () => void
+}
+
+function CompoundHint({ parts }: { parts: CompoundPart[] }) {
+  return (
+    <div className="flex items-center justify-center gap-2 mt-3">
+      {parts.map((p, i) => (
+        <span key={i} className="flex items-center gap-2">
+          {i > 0 && <span className="text-gray-300 text-xs">+</span>}
+          <span className="flex flex-col items-center">
+            <span className="thai text-sm text-gray-700">{p.thai}</span>
+            {p.romanization && (
+              <span className="text-[10px] text-gray-400">{p.romanization}</span>
+            )}
+            {p.gloss && (
+              <span className="text-[10px] text-gray-500 italic">{p.gloss}</span>
+            )}
+          </span>
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export default function FlashCard({ card, isFlipped, onFlip }: Props) {
@@ -46,6 +67,9 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
               <p className="thai text-base text-gray-700">{card.example_thai}</p>
               <p className="text-sm text-gray-400 mt-1">{card.example_english}</p>
             </div>
+          )}
+          {card.compound_breakdown && card.compound_breakdown.length >= 2 && (
+            <CompoundHint parts={card.compound_breakdown} />
           )}
         </div>
       </motion.div>

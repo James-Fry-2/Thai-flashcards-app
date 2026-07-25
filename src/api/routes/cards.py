@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,9 +10,11 @@ from src.api.deps import get_db
 from src.db.services import card_service, tag_service, topic_service
 from src.db.services import embedding_service
 from src.db.services.card_service import count_cards_for_deck
+from src.db.services.preferences_service import get_preferences
 from src.db.models.card import Card
 from src.db.models.tag import Tag, CardTag
 from src.db.models.topic import Topic, CardTopic
+from src.utils.romanization import generate_all, resolve_effective
 
 router = APIRouter(tags=["cards"])
 
@@ -60,6 +63,11 @@ def _card_dict(card, include_analysis: bool = False):
         "deck_id": card.deck_id,
         "thai": card.thai,
         "romanization": card.romanization,
+        "romanization_source": card.romanization_source,
+        "romanization_paiboon": card.romanization_paiboon,
+        "romanization_rtgs": card.romanization_rtgs,
+        "romanization_ipa": card.romanization_ipa,
+        "romanization_manual": card.romanization_manual,
         "english": card.english,
         "example_thai": card.example_thai,
         "example_english": card.example_english,
@@ -72,6 +80,8 @@ def _card_dict(card, include_analysis: bool = False):
         "has_cluster": card.has_cluster,
         "has_rare_consonant": card.has_rare_consonant,
         "has_silent_mark": card.has_silent_mark,
+        "is_compound": card.is_compound,
+        "compound_breakdown": _parse_json_field(card.compound_breakdown, None),
     }
     if include_analysis:
         d["script_analysis"] = _parse_json_field(card.script_analysis, [])
@@ -172,7 +182,33 @@ async def create_card(
     include_analysis: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
-    card = await card_service.create_card(db, deck_id=deck_id, **payload.model_dump())
+    prefs = await get_preferences(db)
+    schemes = await asyncio.to_thread(generate_all, payload.thai)
+    romanization_manual = payload.romanization or None
+    effective = resolve_effective(
+        {
+            "romanization_source": None,
+            "romanization_paiboon": schemes.get("paiboon") or None,
+            "romanization_rtgs": schemes.get("rtgs") or None,
+            "romanization_ipa": schemes.get("ipa") or None,
+            "romanization_manual": romanization_manual,
+        },
+        prefs,
+    )
+    card = await card_service.create_card(
+        db,
+        deck_id=deck_id,
+        thai=payload.thai,
+        english=payload.english,
+        romanization=effective,
+        romanization_paiboon=schemes.get("paiboon") or None,
+        romanization_rtgs=schemes.get("rtgs") or None,
+        romanization_ipa=schemes.get("ipa") or None,
+        romanization_manual=romanization_manual,
+        example_thai=payload.example_thai,
+        example_english=payload.example_english,
+        card_type=payload.card_type,
+    )
     await db.commit()
     return _card_dict(card, include_analysis=include_analysis)
 
@@ -187,7 +223,37 @@ async def update_card(
     card = await card_service.get_card(db, card_id)
     if not card:
         raise HTTPException(404, "Card not found")
-    card = await card_service.update_card(db, card, **payload.model_dump(exclude_none=True))
+
+    update_kwargs = payload.model_dump(exclude_none=True)
+
+    # User-provided 'romanization' becomes the manual override
+    user_romanization = update_kwargs.pop("romanization", None)
+    if user_romanization is not None:
+        update_kwargs["romanization_manual"] = user_romanization
+
+    thai_changed = "thai" in update_kwargs
+    romanization_touched = user_romanization is not None
+
+    if thai_changed or romanization_touched:
+        current_thai = update_kwargs.get("thai", card.thai)
+        prefs = await get_preferences(db)
+
+        if thai_changed:
+            schemes = await asyncio.to_thread(generate_all, current_thai)
+            update_kwargs["romanization_paiboon"] = schemes.get("paiboon") or None
+            update_kwargs["romanization_rtgs"] = schemes.get("rtgs") or None
+            update_kwargs["romanization_ipa"] = schemes.get("ipa") or None
+
+        values = {
+            "romanization_source": card.romanization_source,
+            "romanization_paiboon": update_kwargs.get("romanization_paiboon", card.romanization_paiboon),
+            "romanization_rtgs": update_kwargs.get("romanization_rtgs", card.romanization_rtgs),
+            "romanization_ipa": update_kwargs.get("romanization_ipa", card.romanization_ipa),
+            "romanization_manual": update_kwargs.get("romanization_manual", card.romanization_manual),
+        }
+        update_kwargs["romanization"] = resolve_effective(values, prefs)
+
+    card = await card_service.update_card(db, card, **update_kwargs)
     await db.commit()
     return _card_dict(card, include_analysis=include_analysis)
 
