@@ -72,6 +72,21 @@ class Settings(BaseSettings):
     confusable_max_orthographic: int = 1      # Thai-script edit distance — differ by a single character/mark
     confusable_min_length: int = 2            # skip words shorter than this (1-char words generate noise)
 
+    # Mastery classification (learner feedback / analytics)
+    mastery_min_reviews: int = 3                     # below this a card is "still_learning"
+    mastery_again_rate_struggling: float = 0.30      # recency-weighted again-rate at/above this -> struggling
+    mastery_group_min_cards: int = 5                 # a group needs this many reviewed cards to be ranked
+    mastery_recency_half_life_days: float = 30.0     # exponential decay half-life for recency-weighted again-rate
+    mastery_lapses_struggling: int = 4               # fsrs_lapses at/above this -> struggling
+    mastery_retrievability_struggling: float = 0.70  # relearning + retrievability below this -> struggling
+    mastery_retrievability_solid: float = 0.85       # retrievability at/above this counts toward "solid"
+    mastery_stability_fragile_days: float = 21.0     # fsrs_stability below this (days) -> fragile (if not struggling)
+    mastery_accuracy_solid_max_again_rate: float = 0.10  # again-rate at/below this counts toward "solid"
+
+    # Pattern detection (baseline-compared insights)
+    pattern_min_reviewed_cards: int = 8   # a subgroup needs at least this many reviewed cards to report a pattern
+    pattern_effect_size: float = 0.15     # minimum absolute again-rate gap vs baseline to surface a pattern
+
     # App
     secret_key: str = "change-me"
     log_level: str = "INFO"

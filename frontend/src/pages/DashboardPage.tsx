@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Zap, BookOpen, AlertTriangle, CheckCircle } from 'lucide-react'
 import XPBar from '../components/XPBar'
 import StreakBadge from '../components/StreakBadge'
+import InsightsPanel from '../components/InsightsPanel'
 import api from '../services/api'
 import type { Profile, Deck, Topic, DueSummary } from '../types'
 
@@ -160,6 +161,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <InsightsPanel />
     </div>
   )
 }

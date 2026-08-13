@@ -46,6 +46,16 @@ async def deck_coverage(db: AsyncSession = Depends(get_db)):
     return await analytics_service.get_deck_coverage(db)
 
 
+@router.get("/progress")
+async def progress(db: AsyncSession = Depends(get_db)):
+    """
+    Learner feedback bundle for the dashboard Insights panel: mastery roll-ups
+    (band distribution, strengths/weaknesses) by topic, chapter, and card type;
+    unreviewed coverage; deterministic patterns; and a weekly again-rate trend.
+    """
+    return await analytics_service.get_progress(db)
+
+
 @router.get("/at-risk")
 async def at_risk_cards(
     deck_id: Optional[int] = Query(None, description="Filter to a specific deck"),

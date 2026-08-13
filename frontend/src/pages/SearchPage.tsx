@@ -324,7 +324,7 @@ export default function SearchPage() {
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
           <option value="">All decks</option>
-          {decks?.map((d) => (
+          {Array.isArray(decks) && decks.map((d) => (
             <option key={d.id} value={d.id}>{d.name}</option>
           ))}
         </select>

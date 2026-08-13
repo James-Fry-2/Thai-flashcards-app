@@ -326,6 +326,75 @@ export interface SearchStudyResult {
   cards: SearchCard[]
 }
 
+export type MasteryBand = 'still_learning' | 'struggling' | 'fragile' | 'solid' | 'developing'
+
+export interface MasteryGroup {
+  id: number | string
+  name: string
+  total_cards: number
+  reviewed_cards: number
+  still_learning_count: number
+  band_distribution: Partial<Record<'solid' | 'developing' | 'fragile' | 'struggling', number>>
+  mean_accuracy: number | null
+  mean_retention: number | null
+  mastery_score: number | null
+  eligible: boolean
+  weak_card_ids: number[]
+}
+
+export interface DimensionRollup {
+  dimension: 'topic' | 'chapter' | 'card_type'
+  groups: MasteryGroup[]
+  strengths: MasteryGroup[]
+  weaknesses: MasteryGroup[]
+}
+
+export interface CoverageGroup {
+  id: number | string
+  name: string
+  total_cards: number
+  new_cards: number
+}
+
+export interface Pattern {
+  key: string
+  label: string
+  subgroup_again_rate: number
+  baseline_again_rate: number
+  gap: number
+  sample_size: number
+  card_ids: number[]
+}
+
+export interface AcquisitionVsRetention {
+  struggling_count: number
+  fragile_count: number
+  struggling_card_ids: number[]
+  fragile_card_ids: number[]
+}
+
+export interface PatternsPayload {
+  baseline_again_rate: number | null
+  patterns: Pattern[]
+  acquisition_vs_retention: AcquisitionVsRetention | null
+}
+
+export interface TrendPoint {
+  year: number
+  week: number
+  reviews: number
+  again_rate: number | null
+}
+
+export interface ProgressPayload {
+  topic: DimensionRollup
+  chapter: DimensionRollup
+  card_type: DimensionRollup
+  coverage: { topic: CoverageGroup[]; chapter: CoverageGroup[] }
+  patterns: PatternsPayload
+  trend: TrendPoint[]
+}
+
 export interface AtRiskCard {
   id: number
   deck_id: number

@@ -35,7 +35,12 @@ const RATING_LABELS = [
 ]
 
 function detectScope(pathname: string): Scope {
-  if (pathname.startsWith('/at-risk/review') || pathname.startsWith('/search/review')) return 'custom'
+  if (
+    pathname.startsWith('/at-risk/review') ||
+    pathname.startsWith('/search/review') ||
+    pathname.startsWith('/insights/review')
+  )
+    return 'custom'
   if (pathname.startsWith('/review/library')) return 'library'
   if (pathname.includes('/topics/')) return 'topic'
   if (/\/uploads\/\d+\/review/.test(pathname)) return 'upload'

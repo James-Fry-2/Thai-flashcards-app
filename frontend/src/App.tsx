@@ -35,6 +35,7 @@ export default function App() {
         <Route path="/at-risk/review" element={<ReviewPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/search/review" element={<ReviewPage />} />
+        <Route path="/insights/review" element={<ReviewPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
