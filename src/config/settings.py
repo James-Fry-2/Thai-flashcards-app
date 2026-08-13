@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     # Compound breakdown — surface guard
     compound_surface_min_gloss_ratio: float = 1.0  # fraction of parts that must resolve a gloss to surface (1.0 = all)
 
+    # Confusable detection (deterministic phonetic/orthographic pass)
+    confusable_max_phonetic: float = 0.34     # normalized IPA edit distance — ~1 edit in a 3-phone word
+    confusable_max_orthographic: int = 1      # Thai-script edit distance — differ by a single character/mark
+    confusable_min_length: int = 2            # skip words shorter than this (1-char words generate noise)
+
     # App
     secret_key: str = "change-me"
     log_level: str = "INFO"

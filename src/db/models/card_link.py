@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, UniqueConstraint, Index, DateTime
+from typing import TYPE_CHECKING, Optional
+from sqlalchemy import String, Text, ForeignKey, UniqueConstraint, Index, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, utcnow
 
@@ -8,10 +8,10 @@ if TYPE_CHECKING:
     from .card import Card
 
 # Valid link types between cards
-LINK_TYPES = {"related", "prerequisite", "antonym", "same_root", "variant"}
+LINK_TYPES = {"related", "prerequisite", "antonym", "same_root", "variant", "confusable"}
 
 # These types are symmetric — creating A→B also creates B→A
-SYMMETRIC_LINK_TYPES = {"related", "antonym"}
+SYMMETRIC_LINK_TYPES = {"related", "antonym", "confusable"}
 
 
 class CardLink(Base):
@@ -30,6 +30,10 @@ class CardLink(Base):
         ForeignKey("cards.id", ondelete="CASCADE"), nullable=False
     )
     link_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Provenance/reason for auto-detected links (e.g. "phonetic", "orthographic",
+    # "tone", or a "+"-joined combination). NULL for user-created links — this
+    # distinction lets detection passes clear only what they created.
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )

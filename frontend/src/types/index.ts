@@ -73,6 +73,7 @@ export interface LinkedCard {
 export interface LinkItem {
   link_id: number
   link_type: string
+  note?: string | null
   card: LinkedCard
 }
 

@@ -42,6 +42,7 @@ async def get_card_links(db: AsyncSession, card_id: int) -> dict:
         outgoing.append({
             "link_id": link.id,
             "link_type": link.link_type,
+            "note": link.note,
             "card": await _card_info(link.to_card_id),
         })
 
@@ -50,6 +51,7 @@ async def get_card_links(db: AsyncSession, card_id: int) -> dict:
         incoming.append({
             "link_id": link.id,
             "link_type": link.link_type,
+            "note": link.note,
             "card": await _card_info(link.from_card_id),
         })
 
@@ -61,17 +63,23 @@ async def create_link(
     from_card_id: int,
     to_card_id: int,
     link_type: str,
+    note: Optional[str] = None,
 ) -> CardLink:
     """
     Create a link from from_card_id → to_card_id.
-    For symmetric link types (related, antonym), also inserts the reverse direction.
+    For symmetric link types (related, antonym, confusable), also inserts the reverse direction.
     Silently ignores the insert if the link already exists (unique constraint).
+
+    `note` is provenance: auto-detection passes set it (e.g. a confusable
+    pass's detection reason); user-created links leave it None so re-runs of
+    those passes can distinguish and preserve hand-made links.
     """
     now = utcnow()
     link = CardLink(
         from_card_id=from_card_id,
         to_card_id=to_card_id,
         link_type=link_type,
+        note=note,
         created_at=now,
     )
     db.add(link)
@@ -91,6 +99,7 @@ async def create_link(
                 from_card_id=to_card_id,
                 to_card_id=from_card_id,
                 link_type=link_type,
+                note=note,
                 created_at=now,
             )
             db.add(reverse)

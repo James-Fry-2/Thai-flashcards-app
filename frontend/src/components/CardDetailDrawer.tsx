@@ -758,39 +758,81 @@ function SimilarCardsSection({
   )
 }
 
-function LinksSection({ links }: { links: { outgoing: { link_id: number; link_type: string; card: { id: number; thai: string; english: string } }[]; incoming: { link_id: number; link_type: string; card: { id: number; thai: string; english: string } }[] } }) {
+/** Maps raw detection-reason tokens (from CardLink.note, "+"-joined) to human copy. */
+function friendlyConfusableReason(note?: string | null): string | null {
+  if (!note) return null
+  const labels = new Set<string>()
+  for (const token of note.split('+')) {
+    if (token === 'phonetic' || token === 'tone') labels.add('sounds alike')
+    else if (token === 'orthographic') labels.add('looks alike')
+  }
+  return labels.size > 0 ? Array.from(labels).join(', ') : null
+}
+
+function LinksSection({ links }: { links: { outgoing: { link_id: number; link_type: string; note?: string | null; card: { id: number; thai: string; english: string } }[]; incoming: { link_id: number; link_type: string; note?: string | null; card: { id: number; thai: string; english: string } }[] } }) {
   const all = [
     ...links.outgoing.map((l) => ({ ...l, direction: 'outgoing' as const })),
     ...links.incoming.map((l) => ({ ...l, direction: 'incoming' as const })),
   ]
 
+  const confusable = all.filter((l) => l.link_type === 'confusable')
+  const other = all.filter((l) => l.link_type !== 'confusable')
+
   if (all.length === 0) return null
 
   return (
-    <section>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        Links
-      </h3>
-      <ul className="space-y-1.5">
-        {all.map((l) => (
-          <li
-            key={`${l.direction}-${l.link_id}`}
-            className="flex items-center gap-2 text-xs text-gray-600"
-          >
-            <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] font-medium">
-              {l.link_type}
-            </span>
-            {l.direction === 'incoming' && (
-              <ArrowRight size={12} className="text-gray-300 rotate-180 shrink-0" />
-            )}
-            <span className="thai font-medium">{l.card.thai}</span>
-            <span className="text-gray-400">— {l.card.english}</span>
-            {l.direction === 'outgoing' && (
-              <ArrowRight size={12} className="text-gray-300 shrink-0" />
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      {other.length > 0 && (
+        <section>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Links
+          </h3>
+          <ul className="space-y-1.5">
+            {other.map((l) => (
+              <li
+                key={`${l.direction}-${l.link_id}`}
+                className="flex items-center gap-2 text-xs text-gray-600"
+              >
+                <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                  {l.link_type}
+                </span>
+                {l.direction === 'incoming' && (
+                  <ArrowRight size={12} className="text-gray-300 rotate-180 shrink-0" />
+                )}
+                <span className="thai font-medium">{l.card.thai}</span>
+                <span className="text-gray-400">— {l.card.english}</span>
+                {l.direction === 'outgoing' && (
+                  <ArrowRight size={12} className="text-gray-300 shrink-0" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {confusable.length > 0 && (
+        <section>
+          <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">
+            Easily confused with
+          </h3>
+          <ul className="space-y-1.5">
+            {confusable.map((l) => (
+              <li
+                key={`${l.direction}-${l.link_id}`}
+                className="flex items-center gap-2 text-xs text-gray-600"
+              >
+                <span className="thai font-medium">{l.card.thai}</span>
+                <span className="text-gray-400">— {l.card.english}</span>
+                {friendlyConfusableReason(l.note) && (
+                  <span className="text-[10px] text-gray-400 italic ml-auto shrink-0">
+                    {friendlyConfusableReason(l.note)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
   )
 }
