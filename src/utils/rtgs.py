@@ -3,6 +3,8 @@
 Uses PyThaiNLP romanize with the 'royin' engine (ASCII, no tone marks).
 Returns an empty string on any failure so callers never crash.
 """
+from src.utils.thai_repetition import expand_repetition_marks
+
 try:
     from pythainlp.transliterate import romanize as _romanize
     _AVAILABLE = True
@@ -20,6 +22,7 @@ def thai_to_rtgs(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
+    text = expand_repetition_marks(text)
     try:
         result = _romanize(text, engine="royin")
         return result or ""

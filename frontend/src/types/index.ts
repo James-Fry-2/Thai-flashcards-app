@@ -23,7 +23,7 @@ export interface CompoundPart {
   thai: string
   romanization?: string | null
   gloss?: string | null
-  gloss_source?: 'card' | 'lexicon' | 'llm' | null
+  gloss_source?: 'card' | 'morpheme' | 'volubilis' | 'lexicon' | 'llm' | null
 }
 
 export interface Card {

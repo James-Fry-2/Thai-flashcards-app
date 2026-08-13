@@ -142,11 +142,6 @@ class TestResolveGlosses:
         mock_db = AsyncMock()
         mock_db.scalar = AsyncMock(return_value=None)
 
-        with patch("src.utils.compound._wordnet_gloss", return_value=(None, None)), \
-             patch("src.utils.compound.thai_to_paiboon", return_value="náam"):
-            # Need to patch the import inside the module
-            pass
-
         # At minimum, romanization key is present (may be None if paiboon unavailable)
         with patch("src.utils.compound._wordnet_gloss", return_value=(None, None)):
             result = await resolve_glosses(mock_db, ["น้ำ"])
@@ -160,10 +155,9 @@ class TestResolveGlosses:
         mock_db = AsyncMock()
         mock_db.scalar = AsyncMock(side_effect=["water", None])
 
-        with patch("src.utils.compound._wordnet_gloss", side_effect=[
-            (None, None),       # น้ำ — own card handled it
-            ("hard", "lexicon"),  # แข็ง — from wordnet
-        ]):
+        # _wordnet_gloss is only called for แข็ง — น้ำ short-circuits on the
+        # own-card hit and never reaches the wordnet step.
+        with patch("src.utils.compound._wordnet_gloss", return_value=("hard", "lexicon")):
             result = await resolve_glosses(mock_db, ["น้ำ", "แข็ง"])
 
         assert len(result) == 2
@@ -181,7 +175,7 @@ class TestComputeCompoundBreakdown:
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_glosses(self):
-        """When all glosses are null, breakdown is None (surface rule)."""
+        """When all glosses are null, breakdown is None (surface guard)."""
         from src.utils.compound import compute_compound_breakdown
 
         mock_db = AsyncMock()
@@ -193,23 +187,81 @@ class TestComputeCompoundBreakdown:
             breakdown, is_compound = await compute_compound_breakdown(mock_db, "น้ำแข็ง")
 
         assert breakdown is None
-        assert is_compound is True  # it decomposed, just no gloss
+        assert is_compound is True  # it decomposed, just not surfaced
 
     @pytest.mark.asyncio
-    async def test_returns_breakdown_when_any_gloss_resolves(self):
-        """Even if only one part has a gloss, the full breakdown is returned."""
+    async def test_guard_suppresses_when_one_part_glossless(self):
+        """โทน + สำ + เสียง: สำ never glosses, so under the default (ratio=1.0)
+        guard the breakdown is suppressed even though 2 of 3 parts glossed.
+        is_compound stays True — it's a structural fact, independent of the guard."""
+        from src.utils.compound import compute_compound_breakdown
+
+        mock_db = AsyncMock()
+        with patch("src.utils.compound.decompose", return_value=["โทน", "สำ", "เสียง"]), \
+             patch("src.utils.compound.resolve_glosses", new=AsyncMock(return_value=[
+                 {"thai": "โทน", "romanization": "ton", "gloss": "tone", "gloss_source": "card"},
+                 {"thai": "สำ", "romanization": "sam", "gloss": None, "gloss_source": None},
+                 {"thai": "เสียง", "romanization": "siang", "gloss": "sound", "gloss_source": "lexicon"},
+             ])):
+            breakdown, is_compound = await compute_compound_breakdown(mock_db, "โทนสำเสียง")
+
+        assert breakdown is None
+        assert is_compound is True
+
+    @pytest.mark.asyncio
+    async def test_guard_passes_when_all_parts_gloss(self):
+        """When every part resolves a gloss, the breakdown surfaces."""
         from src.utils.compound import compute_compound_breakdown
 
         mock_db = AsyncMock()
         with patch("src.utils.compound.decompose", return_value=["น้ำ", "แข็ง"]), \
              patch("src.utils.compound.resolve_glosses", new=AsyncMock(return_value=[
                  {"thai": "น้ำ", "romanization": "náam", "gloss": "water", "gloss_source": "card"},
-                 {"thai": "แข็ง", "romanization": "kǎeng", "gloss": None, "gloss_source": None},
+                 {"thai": "แข็ง", "romanization": "kǎeng", "gloss": "hard", "gloss_source": "lexicon"},
              ])):
             breakdown, is_compound = await compute_compound_breakdown(mock_db, "น้ำแข็ง")
 
         assert breakdown is not None
         assert len(breakdown) == 2
+        assert is_compound is True
+
+    @pytest.mark.asyncio
+    async def test_morpheme_map_lets_kwaam_suk_surface(self):
+        """ความสุข → ความ (morpheme map) + สุข (own card/lexicon) — both glossed,
+        so it surfaces with ความ's gloss_source="morpheme"."""
+        from src.utils.compound import compute_compound_breakdown
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(return_value=None)  # no own cards
+        with patch("src.utils.compound.decompose", return_value=["ความ", "สุข"]), \
+             patch("src.utils.compound._wordnet_gloss", return_value=("happy", "lexicon")), \
+             patch("src.db.services.lexicon_service.lookup", new=AsyncMock(return_value=[])):
+            breakdown, is_compound = await compute_compound_breakdown(mock_db, "ความสุข")
+
+        assert is_compound is True
+        assert breakdown is not None
+        assert breakdown[0]["thai"] == "ความ"
+        assert breakdown[0]["gloss_source"] == "morpheme"
+        assert breakdown[1]["gloss"] == "happy"
+
+    @pytest.mark.asyncio
+    async def test_surface_ratio_override_allows_partial_gloss(self):
+        """Lowering compound_surface_min_gloss_ratio to 0.5 lets a 1-of-2-glossed
+        breakdown surface, where the default (1.0) would suppress it."""
+        from src.utils.compound import compute_compound_breakdown
+        from src.config.settings import Settings
+
+        mock_db = AsyncMock()
+        lenient_settings = Settings(compound_surface_min_gloss_ratio=0.5)
+        with patch("src.utils.compound.decompose", return_value=["น้ำ", "แข็ง"]), \
+             patch("src.utils.compound.resolve_glosses", new=AsyncMock(return_value=[
+                 {"thai": "น้ำ", "romanization": "náam", "gloss": "water", "gloss_source": "card"},
+                 {"thai": "แข็ง", "romanization": "kǎeng", "gloss": None, "gloss_source": None},
+             ])), \
+             patch("src.config.settings.get_settings", return_value=lenient_settings):
+            breakdown, is_compound = await compute_compound_breakdown(mock_db, "น้ำแข็ง")
+
+        assert breakdown is not None
         assert is_compound is True
 
     @pytest.mark.asyncio

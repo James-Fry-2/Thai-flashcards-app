@@ -4,6 +4,7 @@ import { X, Plus, ArrowRight, ChevronLeft, Pencil, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import type { CardDetail, SimilarCard, Tag, Topic, CompoundPart } from '../types'
+import CompoundBreakdown from './CompoundBreakdown'
 
 interface Props {
   cardId: number | null
@@ -599,22 +600,7 @@ function BreakdownSection({ parts }: { parts: CompoundPart[] }) {
       <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
         Breakdown
       </h3>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        {parts.map((part, i) => (
-          <span key={i} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-gray-300 text-xs">+</span>}
-            <span className="inline-flex flex-col items-center bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 text-center min-w-[48px]">
-              <span className="thai text-sm font-medium text-gray-800">{part.thai}</span>
-              {part.romanization && (
-                <span className="text-[10px] text-gray-400 mt-0.5">{part.romanization}</span>
-              )}
-              {part.gloss && (
-                <span className="text-[10px] text-amber-700 font-medium mt-0.5">{part.gloss}</span>
-              )}
-            </span>
-          </span>
-        ))}
-      </div>
+      <CompoundBreakdown parts={parts} />
     </section>
   )
 }

@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     compound_gloss_llm_fallback: bool = False  # default off — keeps bulk ingestion free
     compound_max_syllables: int = 3            # inputs with more syllables are skipped
 
+    # Compound breakdown — surface guard
+    compound_surface_min_gloss_ratio: float = 1.0  # fraction of parts that must resolve a gloss to surface (1.0 = all)
+
     # App
     secret_key: str = "change-me"
     log_level: str = "INFO"

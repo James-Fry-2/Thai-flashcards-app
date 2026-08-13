@@ -10,8 +10,10 @@ decompose(thai)         -> list[str] | None
 resolve_glosses(db, parts) -> list[dict]  (async)
     For each constituent, resolve a gloss via:
       1. Own-cards lookup (cards.thai index, gloss_source="card")
-      2. PyThaiNLP Open Multilingual WordNet Thai (gloss_source="lexicon")
-      LLM fallback (step 3) is handled separately by the caller when
+      2. Closed-set bound-morpheme map (gloss_source="morpheme")
+      3. Volubilis lexicon table (gloss_source="volubilis")
+      4. PyThaiNLP Open Multilingual WordNet Thai (gloss_source="lexicon")
+      LLM fallback (step 5) is handled separately by the caller when
       compound_gloss_llm_fallback is enabled.
 
 Both functions are pure/deterministic and degrade gracefully (return None /
@@ -127,7 +129,24 @@ def _decompose_inner(thai: str) -> list[str] | None:
 
 
 # ---------------------------------------------------------------------------
-# Gloss resolution ladder (steps 1 and 2; step 3 is caller-side)
+# Closed-set bound morphemes / nominalizers wordnet won't gloss. Functional glosses.
+# ---------------------------------------------------------------------------
+
+_MORPHEME_GLOSS: dict[str, str] = {
+    "การ": "act of / -ing",
+    "ความ": "-ness (abstract noun)",
+    "ผู้": "person who / -er",
+    "นัก": "-ist / habitual doer",
+    "ช่าง": "craftsman / -smith",
+    "เครื่อง": "machine / device",
+    "ชาว": "people of / folk",
+    "น่า": "-worthy",
+    "ที่": "place / -er",
+}
+
+
+# ---------------------------------------------------------------------------
+# Gloss resolution ladder (steps 1-4; step 5, the LLM fallback, is caller-side)
 # ---------------------------------------------------------------------------
 
 async def resolve_glosses(
@@ -137,12 +156,14 @@ async def resolve_glosses(
     """
     Return a list of part-dicts: {thai, romanization, gloss, gloss_source}.
 
-    gloss and gloss_source are None when neither own-cards nor the lexicon
-    resolved a gloss for that part.  The LLM fallback (step 3) must be
-    applied by the caller after this function returns, if needed.
+    gloss and gloss_source are None when none of own-cards, the morpheme map,
+    the Volubilis lexicon, or wordnet resolved a gloss for that part.  The
+    LLM fallback (step 5) must be applied by the caller after this function
+    returns, if needed.
     """
     from sqlalchemy import select
     from src.db.models.card import Card
+    from src.db.services import lexicon_service
     from src.utils.paiboon import thai_to_paiboon
 
     result = []
@@ -162,7 +183,22 @@ async def resolve_glosses(
         except Exception:
             pass
 
-        # Step 2: PyThaiNLP OMW wordnet (only if step 1 missed)
+        # Step 2: closed-set bound-morpheme map
+        if gloss is None and part in _MORPHEME_GLOSS:
+            gloss = _MORPHEME_GLOSS[part]
+            gloss_source = "morpheme"
+
+        # Step 3: Volubilis lexicon
+        if gloss is None:
+            try:
+                translations = await lexicon_service.lookup(db, part)
+            except Exception:
+                translations = []
+            if translations:
+                gloss = translations[0]
+                gloss_source = "volubilis"
+
+        # Step 4: PyThaiNLP OMW wordnet
         if gloss is None:
             gloss, gloss_source = _wordnet_gloss(part)
 
@@ -206,18 +242,21 @@ async def compute_compound_breakdown(
     """
     Returns (breakdown, is_compound).
 
-    breakdown is None when:
+    is_compound is a structural signal: True whenever decompose() finds ≥2
+    dictionary constituents, regardless of gloss coverage; False when
+    decompose() returned None or the syllable cap is exceeded.
+
+    breakdown is the learner-facing surfaced hint, which is a separate,
+    stricter concern (the surface guard). It is None when:
     - The word exceeds compound_max_syllables (treated as not a compound)
     - The word isn't a resolvable compound
-    - Decomposition succeeds but not a single part resolves a gloss
-      (surface rule: silence rather than a gloss-less breakdown)
-
-    is_compound is True when a valid breakdown was found (even if some
-    gloss entries are null); False when decompose() returned None or the
-    syllable cap is exceeded.
+    - Decomposition succeeds but the fraction of parts that resolve a gloss
+      falls below compound_surface_min_gloss_ratio (default 1.0 — every
+      part must gloss for the breakdown to surface)
     """
     from src.config.settings import get_settings
-    max_syl = get_settings().compound_max_syllables
+    settings = get_settings()
+    max_syl = settings.compound_max_syllables
     if syllable_count is not None and syllable_count > max_syl:
         return None, False
 
@@ -226,4 +265,7 @@ async def compute_compound_breakdown(
         return None, False
 
     resolved = await resolve_glosses(db, parts)
-    return resolved, True
+    glossed = sum(1 for p in resolved if p["gloss"])
+    ratio = glossed / len(resolved) if resolved else 0.0
+    surfaced = ratio >= settings.compound_surface_min_gloss_ratio
+    return (resolved if surfaced else None), True

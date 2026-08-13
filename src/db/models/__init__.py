@@ -13,6 +13,7 @@ from .topic import Topic, CardTopic
 from .embeddings import CardEmbedding, TopicEmbedding, TagEmbedding
 from .review_session import ReviewSession
 from .preferences import UserPreferences
+from .lexicon import Lexicon
 
 __all__ = [
     "Base",
@@ -36,4 +37,5 @@ __all__ = [
     "TagEmbedding",
     "ReviewSession",
     "UserPreferences",
+    "Lexicon",
 ]
