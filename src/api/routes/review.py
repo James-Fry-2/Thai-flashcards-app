@@ -50,6 +50,8 @@ def _build_card_payload(c: Card, s: CardSchedule) -> dict:
         "fsrs_state": s.fsrs_state,
         "is_compound": c.is_compound,
         "compound_breakdown": _parse(c.compound_breakdown),
+        "translation_status": c.translation_status,
+        "translation_candidates": _parse(c.translation_candidates),
     }
 
 

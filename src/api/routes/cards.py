@@ -48,6 +48,11 @@ class CardTopicAdd(BaseModel):
     topic_id: Optional[int] = None
 
 
+class TranslationResolve(BaseModel):
+    action: str  # "keep" | "correct"
+    english: Optional[str] = None
+
+
 def _parse_json_field(value: Optional[str], default):
     if value is None:
         return default
@@ -82,6 +87,8 @@ def _card_dict(card, include_analysis: bool = False):
         "has_silent_mark": card.has_silent_mark,
         "is_compound": card.is_compound,
         "compound_breakdown": _parse_json_field(card.compound_breakdown, None),
+        "translation_status": card.translation_status,
+        "translation_candidates": _parse_json_field(card.translation_candidates, None),
     }
     if include_analysis:
         d["script_analysis"] = _parse_json_field(card.script_analysis, [])
@@ -94,18 +101,17 @@ async def list_cards(
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     tagged: Optional[bool] = Query(None, description="true=tagged only, false=untagged only"),
+    translation_status: Optional[str] = Query(None, description="Filter by translation_status, e.g. 'flagged'"),
     include_analysis: bool = Query(False, description="Include verbose per-syllable script_analysis in response"),
     db: AsyncSession = Depends(get_db),
 ):
-    if tagged is False:
-        stmt = (
-            select(Card)
-            .where(Card.deck_id == deck_id)
-            .where(not_(exists(select(CardTag.card_id).where(CardTag.card_id == Card.id))))
-            .order_by(Card.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+    if tagged is False or translation_status is not None:
+        stmt = select(Card).where(Card.deck_id == deck_id)
+        if tagged is False:
+            stmt = stmt.where(not_(exists(select(CardTag.card_id).where(CardTag.card_id == Card.id))))
+        if translation_status is not None:
+            stmt = stmt.where(Card.translation_status == translation_status)
+        stmt = stmt.order_by(Card.created_at.desc()).offset(offset).limit(limit)
         result = await db.execute(stmt)
         cards = list(result.scalars().all())
     else:
@@ -256,6 +262,38 @@ async def update_card(
     card = await card_service.update_card(db, card, **update_kwargs)
     await db.commit()
     return _card_dict(card, include_analysis=include_analysis)
+
+
+@router.post("/cards/{card_id}/resolve-translation")
+async def resolve_translation(
+    card_id: int,
+    payload: TranslationResolve,
+    db: AsyncSession = Depends(get_db),
+):
+    """User's verdict on a flagged translation: keep the material value, or correct it."""
+    card = await card_service.get_card(db, card_id)
+    if not card:
+        raise HTTPException(404, "Card not found")
+
+    if payload.action == "keep":
+        card = await card_service.update_card(
+            db, card, translation_status="confirmed", translation_candidates=None
+        )
+    elif payload.action == "correct":
+        if not payload.english or not payload.english.strip():
+            raise HTTPException(422, "english is required when action is 'correct'")
+        card = await card_service.update_card(
+            db,
+            card,
+            english=payload.english,
+            translation_status="confirmed",
+            translation_candidates=None,
+        )
+    else:
+        raise HTTPException(422, "action must be 'keep' or 'correct'")
+
+    await db.commit()
+    return _card_dict(card)
 
 
 @router.delete("/cards/{card_id}", status_code=204)

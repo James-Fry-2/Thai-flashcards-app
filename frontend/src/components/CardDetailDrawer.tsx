@@ -49,6 +49,17 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
     { onSuccess: invalidate },
   )
 
+  const resolveTranslation = useMutation(
+    (payload: { action: 'keep' | 'correct'; english?: string }) =>
+      api.post(`/cards/${cardId}/resolve-translation`, payload).then((r) => r.data),
+    {
+      onSuccess: () => {
+        invalidate()
+        toast.success('Translation resolved')
+      },
+    }
+  )
+
   const removeTag = useMutation(
     (tagId: number) => api.delete(`/cards/${cardId}/tags/${tagId}`),
     { onSuccess: invalidate }
@@ -135,6 +146,17 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
 
           {card && (
             <>
+              {/* Translation flag */}
+              {card.translation_status === 'flagged' && (
+                <TranslationFlag
+                  english={card.english}
+                  candidates={card.translation_candidates ?? []}
+                  onKeep={() => resolveTranslation.mutate({ action: 'keep' })}
+                  onCorrect={(value) => resolveTranslation.mutate({ action: 'correct', english: value })}
+                  isSaving={resolveTranslation.isLoading}
+                />
+              )}
+
               {/* Tags section */}
               <section>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -589,6 +611,93 @@ function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; 
             )}
           </div>
         ))}
+      </div>
+    </section>
+  )
+}
+
+function TranslationFlag({
+  english,
+  candidates,
+  onKeep,
+  onCorrect,
+  isSaving,
+}: {
+  english: string
+  candidates: string[]
+  onKeep: () => void
+  onCorrect: (value: string) => void
+  isSaving: boolean
+}) {
+  const [draft, setDraft] = useState('')
+
+  const chosen = draft.trim()
+  const canCorrect = chosen.length > 0 && chosen !== english
+
+  return (
+    <section className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3.5">
+      <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">
+        Possible mistranslation
+      </h3>
+      <p className="text-xs text-amber-700/80 mb-3">
+        The dictionary suggests a different translation. This is only a suggestion — your
+        materials are the default and win unless you correct it.
+      </p>
+
+      <div className="mb-3">
+        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+          From your materials
+        </p>
+        <p className="text-sm font-medium text-gray-800">{english}</p>
+      </div>
+
+      {candidates.length > 0 && (
+        <div className="mb-3">
+          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+            Dictionary suggests
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {candidates.map((c) => (
+              <button
+                key={c}
+                onClick={() => setDraft(c)}
+                disabled={isSaving}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                  draft.trim() === c
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Or type a correction…"
+        disabled={isSaving}
+        className="w-full text-xs border border-amber-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+      />
+
+      <div className="flex gap-2">
+        <button
+          onClick={onKeep}
+          disabled={isSaving}
+          className="btn-secondary text-xs flex-1"
+        >
+          Keep
+        </button>
+        <button
+          onClick={() => onCorrect(chosen)}
+          disabled={isSaving || !canCorrect}
+          className="text-xs flex-1 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 font-medium transition-colors"
+        >
+          Use correction
+        </button>
       </div>
     </section>
   )

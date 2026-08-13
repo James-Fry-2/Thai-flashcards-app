@@ -45,6 +45,10 @@ class Card(Base, TimestampMixin):
     compound_breakdown: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON-encoded list[dict]
     is_compound: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
+    # Translation check (populated at card creation, backfilled via script)
+    translation_status: Mapped[str] = mapped_column(Text, nullable=False, default="unverified", index=True)
+    translation_candidates: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON-encoded list[str]
+
     card_type: Mapped[str] = mapped_column(
         String(20), default="vocab", nullable=False
     )  # vocab | phrase | grammar

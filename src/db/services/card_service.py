@@ -9,6 +9,7 @@ from src.db.models.deck import Deck
 from src.db.models.tag import Tag, CardTag
 from src.utils.thai_analysis import analyze_thai
 from src.utils.compound import compute_compound_breakdown
+from src.utils.translation_check import check_translation
 from datetime import datetime, timedelta, timezone
 
 
@@ -54,6 +55,10 @@ async def create_card(
     from src.db.services import embedding_service
     analysis = analyze_thai(thai)
     breakdown, is_compound = await compute_compound_breakdown(db, thai, syllable_count=analysis["syllable_count"])
+    try:
+        translation_status, translation_candidates = await check_translation(db, thai, english)
+    except Exception:
+        translation_status, translation_candidates = "unverified", None
     card = Card(
         deck_id=deck_id,
         thai=thai,
@@ -77,6 +82,8 @@ async def create_card(
         script_analysis=json.dumps(analysis["script_analysis"], ensure_ascii=False),
         compound_breakdown=json.dumps(breakdown, ensure_ascii=False) if breakdown is not None else None,
         is_compound=is_compound,
+        translation_status=translation_status,
+        translation_candidates=json.dumps(translation_candidates, ensure_ascii=False) if translation_candidates else None,
     )
     db.add(card)
     try:

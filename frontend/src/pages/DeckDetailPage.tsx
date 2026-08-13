@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { Download, Zap, Trash2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Download, Zap, Trash2, ArrowLeft, ChevronLeft, ChevronRight, Flag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import CardDetailDrawer from '../components/CardDetailDrawer'
@@ -24,6 +24,7 @@ export default function DeckDetailPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [page, setPage] = useState(0)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
+  const [flaggedOnly, setFlaggedOnly] = useState(false)
 
   const offset = page * PAGE_SIZE
 
@@ -32,10 +33,13 @@ export default function DeckDetailPage() {
   )
 
   const { data, isLoading } = useQuery<CardsPage>(
-    ['cards', id, page],
+    ['cards', id, page, flaggedOnly],
     () =>
       api
-        .get(`/decks/${id}/cards?offset=${offset}&limit=${PAGE_SIZE}`)
+        .get(
+          `/decks/${id}/cards?offset=${offset}&limit=${PAGE_SIZE}` +
+            (flaggedOnly ? '&translation_status=flagged' : '')
+        )
         .then((r: { data: CardsPage }) => r.data),
     { keepPreviousData: true }
   )
@@ -86,6 +90,16 @@ export default function DeckDetailPage() {
           )}
         </div>
         <div className="flex gap-2">
+          <button
+            className={`btn-secondary text-sm ${flaggedOnly ? 'bg-amber-100 text-amber-700 border-amber-200' : ''}`}
+            onClick={() => {
+              setFlaggedOnly((v) => !v)
+              setPage(0)
+            }}
+            title="Show only cards with a possible mistranslation"
+          >
+            <Flag size={14} /> Flagged
+          </button>
           <button className="btn-secondary text-sm" onClick={handleExport}>
             <Download size={14} /> Export Anki
           </button>
@@ -128,6 +142,10 @@ export default function DeckDetailPage() {
         <div className="card text-center py-12 text-gray-400">
           No cards yet. Upload notes to generate cards.
         </div>
+      ) : cards.length === 0 && flaggedOnly ? (
+        <div className="card text-center py-12 text-gray-400">
+          No flagged translations. Nice.
+        </div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -157,7 +175,12 @@ export default function DeckDetailPage() {
                     onClick={() => setSelectedCardId(card.id)}
                   >
                     <td className="px-4 py-3 thai font-medium text-base">
-                      {card.thai}
+                      <span className="inline-flex items-center gap-1.5">
+                        {card.thai}
+                        {card.translation_status === 'flagged' && (
+                          <Flag size={11} className="text-amber-500 shrink-0" />
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400">{card.romanization}</td>
                     <td className="px-4 py-3">{card.english}</td>

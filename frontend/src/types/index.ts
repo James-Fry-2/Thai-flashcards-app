@@ -46,6 +46,8 @@ export interface Card {
   topics: CardTopicRef[]
   is_compound?: boolean | null
   compound_breakdown?: CompoundPart[] | null
+  translation_status?: 'unverified' | 'ok' | 'flagged' | 'confirmed'
+  translation_candidates?: string[] | null
 }
 
 export interface UserPreferences {
