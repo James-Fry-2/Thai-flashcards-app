@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     pattern_min_reviewed_cards: int = 8   # a subgroup needs at least this many reviewed cards to report a pattern
     pattern_effect_size: float = 0.15     # minimum absolute again-rate gap vs baseline to surface a pattern
 
+    # Multiple-choice quiz distractor selection — semantic near-neighbour band.
+    # Below min: unrelated (useless distractor). Above max: near-synonym (broken item).
+    distractor_semantic_min: float = 0.45
+    distractor_semantic_max: float = 0.75
+
     # App
     secret_key: str = "change-me"
     log_level: str = "INFO"

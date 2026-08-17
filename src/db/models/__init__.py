@@ -14,6 +14,7 @@ from .embeddings import CardEmbedding, TopicEmbedding, TagEmbedding
 from .review_session import ReviewSession
 from .preferences import UserPreferences
 from .lexicon import Lexicon
+from .quiz_option_log import QuizOptionLog
 
 __all__ = [
     "Base",
@@ -38,4 +39,5 @@ __all__ = [
     "ReviewSession",
     "UserPreferences",
     "Lexicon",
+    "QuizOptionLog",
 ]

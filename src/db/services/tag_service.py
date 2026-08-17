@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.tag import Tag, CardTag
 from src.db.models.card import Card
+from src.utils.text import levenshtein as _levenshtein
 
 
 def _normalize_name(name: str) -> str:
@@ -14,20 +15,6 @@ def _normalize_name(name: str) -> str:
     if n.endswith('s') and len(n) > 2:
         n = n[:-1]
     return n
-
-
-def _levenshtein(a: str, b: str) -> int:
-    if len(a) < len(b):
-        a, b = b, a
-    if not b:
-        return len(a)
-    prev = list(range(len(b) + 1))
-    for ca in a:
-        curr = [prev[0] + 1]
-        for j, cb in enumerate(b):
-            curr.append(min(prev[j] + (0 if ca == cb else 1), prev[j + 1] + 1, curr[j] + 1))
-        prev = curr
-    return prev[-1]
 
 
 def _is_contained_word(shorter: str, longer: str) -> bool:

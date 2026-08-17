@@ -395,6 +395,26 @@ export interface ProgressPayload {
   trend: TrendPoint[]
 }
 
+export interface QuizOption {
+  card_id: number
+  english: string
+  source: 'target' | 'orthographic' | 'phonetic' | 'tone' | 'semantic' | 'topic' | 'same_type' | 'random'
+  position: number
+}
+
+export interface QuizItem {
+  card_id: number
+  thai: string
+  romanization?: string
+  options: QuizOption[]
+}
+
+export interface QuizSession {
+  quiz_session_id: string
+  direction: string
+  items: QuizItem[]
+}
+
 export interface AtRiskCard {
   id: number
   deck_id: number

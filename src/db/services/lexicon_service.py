@@ -17,3 +17,20 @@ async def lookup(db: AsyncSession, thai: str) -> list[str]:
             seen.add(english)
             translations.append(english)
     return translations
+
+
+async def lookup_ranked(db: AsyncSession, thai: str) -> list[dict]:
+    """Return distinct {english, level, pos} senses for an exact Thai match,
+    in row order, for level-aware gloss sense selection."""
+    result = await db.execute(
+        select(Lexicon.english, Lexicon.level, Lexicon.pos)
+        .where(Lexicon.thai == thai)
+        .order_by(Lexicon.id)
+    )
+    seen: set[str] = set()
+    senses: list[dict] = []
+    for english, level, pos in result.all():
+        if english not in seen:
+            seen.add(english)
+            senses.append({"english": english, "level": level, "pos": pos})
+    return senses

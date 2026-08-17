@@ -26,6 +26,7 @@ with bundling in this application.
 from __future__ import annotations
 
 import functools
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -146,6 +147,111 @@ _MORPHEME_GLOSS: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
+# Gloss sense selection — dictionary sources (Volubilis, wordnet) return
+# translations in an arbitrary/lexicographic order, not by commonness, so the
+# first entry is often a rare or technical sense (e.g. a scientific binomial).
+# ---------------------------------------------------------------------------
+
+_TWO_WORD_CAPITALIZED_RE = re.compile(r"^[A-Z][a-z]+\s+[a-z]+$")
+
+# zipf_frequency is a log-scale word commonness score (~1-8 for real English
+# words, 0 for words absent from the corpus entirely). Latin species epithets
+# like "gigantea" occasionally show up with a tiny nonzero score (incidental
+# corpus mentions), so binomial detection uses a low-end cutoff rather than
+# requiring exactly 0 — ordinary English words like "crown"/"flower" score
+# well above it (~4+).
+_UNKNOWN_WORD_ZIPF_CUTOFF = 2.5
+
+
+def _word_freq(word: str) -> float:
+    try:
+        from wordfreq import zipf_frequency
+        return zipf_frequency(word.lower(), "en")
+    except Exception:
+        return 0.0
+
+
+def _is_binomial(candidate: str) -> bool:
+    """True for scientific-binomial-shaped candidates ("Calotropis gigantea")
+    where neither word is recognized English. The capitalized+lowercase shape
+    alone isn't enough to tell apart a real binomial from an ordinary
+    two-word gloss like "Crown flower" (both real English words) — checking
+    that both tokens are otherwise-unknown to English word frequency data is
+    what distinguishes them."""
+    match = _TWO_WORD_CAPITALIZED_RE.match(candidate.strip())
+    if not match:
+        return False
+    genus, species = candidate.strip().split()
+    return (
+        _word_freq(genus) < _UNKNOWN_WORD_ZIPF_CUTOFF
+        and _word_freq(species) < _UNKNOWN_WORD_ZIPF_CUTOFF
+    )
+
+
+# Function words to skip when scoring a multi-word gloss like "be fond of" —
+# they're extremely high-frequency themselves ("be", "of") but aren't the
+# word that carries the sense, so scoring by them (or by just the first
+# word) would rank glossary filler above single content words like "love".
+_STOPWORDS = frozenset({
+    "a", "an", "the", "to", "of", "on", "in", "at", "for", "with", "and", "or",
+    "be", "is", "am", "are", "was", "were", "been", "being",
+})
+
+
+def pick_best_gloss(translations: list[str]) -> str | None:
+    """Choose the everyday sense from an ordered list of translations.
+
+    Drops scientific binomials, then ranks the rest by English word
+    frequency and returns the most common. Falls back to the first
+    remaining entry if no candidate has frequency data; None if the list is
+    empty or every entry is a binomial.
+    """
+    candidates = [t for t in translations if t and not _is_binomial(t)]
+    if not candidates:
+        return None
+
+    def score(candidate: str) -> float:
+        words = candidate.strip().lower().split()
+        content_words = [w for w in words if w not in _STOPWORDS] or words
+        return max((_word_freq(w) for w in content_words), default=0.0)
+
+    best = max(candidates, key=score)
+    return best if score(best) > 0.0 else candidates[0]
+
+
+# Volubilis Level marker ordering: B (basic) < A1 (intermediate) < A2
+# (advanced) < s (special); anything else (including NULL / unrecognized)
+# sorts last.
+_LEVEL_ORDER: dict[str, int] = {"B": 0, "A1": 1, "A2": 2, "s": 3}
+
+
+def select_gloss_by_level(senses: list[dict]) -> str | None:
+    """Choose the everyday sense from an ordered list of {english, level, ...}
+    dicts, using the Volubilis Level marker as the primary rank (B < A1 < A2
+    < s, NULL last) and pick_best_gloss's frequency ranking as the tie-break
+    within a level.
+
+    Scientific binomials are dropped first, same as pick_best_gloss. When
+    every surviving sense has a NULL level (the source file carries no level
+    data for this entry), this degrades to plain pick_best_gloss ranking —
+    identical to the pre-Level behaviour.
+    """
+    candidates = [s for s in senses if s.get("english") and not _is_binomial(s["english"])]
+    if not candidates:
+        return None
+
+    if all(s.get("level") is None for s in candidates):
+        return pick_best_gloss([s["english"] for s in candidates])
+
+    best_rank = min(_LEVEL_ORDER.get(s.get("level"), 99) for s in candidates)
+    best_tier = [
+        s["english"] for s in candidates
+        if _LEVEL_ORDER.get(s.get("level"), 99) == best_rank
+    ]
+    return best_tier[0] if len(best_tier) == 1 else pick_best_gloss(best_tier)
+
+
+# ---------------------------------------------------------------------------
 # Gloss resolution ladder (steps 1-4; step 5, the LLM fallback, is caller-side)
 # ---------------------------------------------------------------------------
 
@@ -191,12 +297,13 @@ async def resolve_glosses(
         # Step 3: Volubilis lexicon
         if gloss is None:
             try:
-                translations = await lexicon_service.lookup(db, part)
+                senses = await lexicon_service.lookup_ranked(db, part)
             except Exception:
-                translations = []
-            if translations:
-                gloss = translations[0]
-                gloss_source = "volubilis"
+                senses = []
+            if senses:
+                gloss = select_gloss_by_level(senses)
+                if gloss is not None:
+                    gloss_source = "volubilis"
 
         # Step 4: PyThaiNLP OMW wordnet
         if gloss is None:
@@ -219,13 +326,19 @@ def _wordnet_gloss(thai_word: str) -> tuple[str | None, str | None]:
         synsets = wn.synsets(thai_word, lang="tha")
         if not synsets:
             return None, None
-        # Use the first English lemma name from the first synset
-        for synset in synsets:
-            lemmas = synset.lemma_names("eng")
-            if lemmas:
-                # Clean up underscores used in wordnet lemma names
-                return lemmas[0].replace("_", " "), "lexicon"
-        return None, None
+        # Collect lemma candidates across the first few synsets — synset
+        # order isn't ranked by commonness, so limiting to synsets[0] risked
+        # a rare/technical sense the same way the Volubilis step did.
+        candidates: list[str] = []
+        seen: set[str] = set()
+        for synset in synsets[:5]:
+            for lemma in synset.lemma_names("eng"):
+                cleaned = lemma.replace("_", " ")
+                if cleaned not in seen:
+                    seen.add(cleaned)
+                    candidates.append(cleaned)
+        gloss = pick_best_gloss(candidates)
+        return (gloss, "lexicon") if gloss is not None else (None, None)
     except Exception:
         return None, None
 

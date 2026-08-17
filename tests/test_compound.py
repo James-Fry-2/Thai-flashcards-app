@@ -86,6 +86,125 @@ class TestDecompose:
 
 
 # ---------------------------------------------------------------------------
+# pick_best_gloss() — sense selection among an ordered translation list
+# ---------------------------------------------------------------------------
+
+class TestPickBestGloss:
+
+    def test_picks_common_sense_over_technical_ones(self):
+        """The real รัก ordering: binomial + common-name + rare-word entries
+        precede the everyday senses. Frequency ranking should surface one of
+        those, not the scientific/technical ones."""
+        from src.utils.compound import pick_best_gloss
+
+        result = pick_best_gloss(
+            ["Calotropis gigantea", "Crown flower", "lacquer", "love", "like"]
+        )
+        assert result in ("love", "like")
+
+    def test_binomial_only_list_returns_none(self):
+        from src.utils.compound import pick_best_gloss
+
+        assert pick_best_gloss(["Calotropis gigantea"]) is None
+
+    def test_binomial_dropped_leaves_first_non_binomial(self):
+        """When frequency data can't separate the remaining candidates
+        further, a binomial is still excluded from consideration."""
+        from src.utils.compound import pick_best_gloss
+
+        result = pick_best_gloss(["Calotropis gigantea", "lacquer"])
+        assert result == "lacquer"
+
+    def test_empty_list_returns_none(self):
+        from src.utils.compound import pick_best_gloss
+
+        assert pick_best_gloss([]) is None
+
+    def test_ordinary_capitalized_phrase_not_treated_as_binomial(self):
+        """'Crown flower' has the same capitalized+lowercase shape as a
+        binomial but both words are real English — it must survive the
+        binomial filter (even though frequency ranking still demotes it
+        below 'love')."""
+        from src.utils.compound import pick_best_gloss
+
+        result = pick_best_gloss(["Crown flower", "xyzzyqq"])
+        assert result == "Crown flower"
+
+
+# ---------------------------------------------------------------------------
+# select_gloss_by_level() — Level-ranked sense selection
+# ---------------------------------------------------------------------------
+
+class TestSelectGlossByLevel:
+
+    def test_ranks_by_level_over_source_order(self):
+        """A later, lower-level ("B") sense beats an earlier NULL/higher-level
+        sense — this is the whole point of switching off frequency-only
+        ranking."""
+        from src.utils.compound import select_gloss_by_level
+
+        senses = [
+            {"english": "Crown flower", "level": None, "pos": "n."},
+            {"english": "lacquer", "level": None, "pos": "n."},
+            {"english": "love", "level": "B", "pos": "v."},
+            {"english": "like", "level": "B", "pos": "v."},
+        ]
+        result = select_gloss_by_level(senses)
+        assert result in ("love", "like")
+
+    def test_drops_scientific_binomial_even_at_best_level(self):
+        """A binomial-shaped sense must never win, regardless of its level —
+        science is excluded before ranking, not after."""
+        from src.utils.compound import select_gloss_by_level
+
+        senses = [
+            {"english": "Calotropis gigantea", "level": "B", "pos": "n."},
+            {"english": "lacquer", "level": "A2", "pos": "n."},
+        ]
+        result = select_gloss_by_level(senses)
+        assert result == "lacquer"
+
+    def test_ties_within_a_level_broken_by_frequency(self):
+        """Two senses at the same best level fall back to pick_best_gloss's
+        frequency ranking rather than raw source order."""
+        from src.utils.compound import select_gloss_by_level
+
+        senses = [
+            {"english": "cherish", "level": "B", "pos": "v."},
+            {"english": "love", "level": "B", "pos": "v."},
+        ]
+        result = select_gloss_by_level(senses)
+        assert result == "love"
+
+    def test_all_null_levels_falls_back_to_frequency_ranking(self):
+        """When the source file carries no level data at all for this entry,
+        behaviour must be identical to plain pick_best_gloss — the pre-Level
+        default."""
+        from src.utils.compound import select_gloss_by_level, pick_best_gloss
+
+        senses = [
+            {"english": "Calotropis gigantea", "level": None, "pos": "n."},
+            {"english": "Crown flower", "level": None, "pos": "n."},
+            {"english": "lacquer", "level": None, "pos": "n."},
+            {"english": "love", "level": None, "pos": "v."},
+            {"english": "like", "level": None, "pos": "v."},
+        ]
+        expected = pick_best_gloss([s["english"] for s in senses])
+        assert select_gloss_by_level(senses) == expected
+
+    def test_empty_list_returns_none(self):
+        from src.utils.compound import select_gloss_by_level
+
+        assert select_gloss_by_level([]) is None
+
+    def test_all_binomial_returns_none(self):
+        from src.utils.compound import select_gloss_by_level
+
+        senses = [{"english": "Calotropis gigantea", "level": "B", "pos": "n."}]
+        assert select_gloss_by_level(senses) is None
+
+
+# ---------------------------------------------------------------------------
 # resolve_glosses() — gloss-ladder ordering
 # ---------------------------------------------------------------------------
 
@@ -146,6 +265,52 @@ class TestResolveGlosses:
         with patch("src.utils.compound._wordnet_gloss", return_value=(None, None)):
             result = await resolve_glosses(mock_db, ["น้ำ"])
         assert "romanization" in result[0]
+
+    @pytest.mark.asyncio
+    async def test_volubilis_step_resolves_common_sense_not_scientific_name(self):
+        """Regression for the real รัก entry with no level data (this is
+        what the file actually carries today): lookup_ranked returns senses
+        headed by a scientific binomial and a plant common name before the
+        everyday senses, all with level=None. The Volubilis step must not
+        blindly take the first one — it degrades to pick_best_gloss's
+        frequency ranking and surfaces "love"/"like"."""
+        from src.utils.compound import resolve_glosses
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(return_value=None)  # no own card
+
+        rak_senses = [
+            {"english": e, "level": None, "pos": None} for e in (
+                "Calotropis gigantea", "Crown flower", "lacquer", "love",
+                "be fond of", "be keen on", "cherish", "adore", "like",
+            )
+        ]
+        with patch("src.db.services.lexicon_service.lookup_ranked", new=AsyncMock(return_value=rak_senses)):
+            result = await resolve_glosses(mock_db, ["รัก"])
+
+        assert result[0]["gloss"] in ("love", "like")
+        assert result[0]["gloss_source"] == "volubilis"
+
+    @pytest.mark.asyncio
+    async def test_volubilis_step_uses_level_when_present(self):
+        """When the lexicon does carry level data, a "B"-level sense wins
+        over an earlier NULL-level sense, even though frequency ranking
+        alone might have picked differently."""
+        from src.utils.compound import resolve_glosses
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(return_value=None)  # no own card
+
+        senses = [
+            {"english": "Crown flower", "level": None, "pos": "n."},
+            {"english": "lacquer", "level": None, "pos": "n."},
+            {"english": "love", "level": "B", "pos": "v."},
+        ]
+        with patch("src.db.services.lexicon_service.lookup_ranked", new=AsyncMock(return_value=senses)):
+            result = await resolve_glosses(mock_db, ["รัก"])
+
+        assert result[0]["gloss"] == "love"
+        assert result[0]["gloss_source"] == "volubilis"
 
     @pytest.mark.asyncio
     async def test_multiple_parts(self):
@@ -235,7 +400,7 @@ class TestComputeCompoundBreakdown:
         mock_db.scalar = AsyncMock(return_value=None)  # no own cards
         with patch("src.utils.compound.decompose", return_value=["ความ", "สุข"]), \
              patch("src.utils.compound._wordnet_gloss", return_value=("happy", "lexicon")), \
-             patch("src.db.services.lexicon_service.lookup", new=AsyncMock(return_value=[])):
+             patch("src.db.services.lexicon_service.lookup_ranked", new=AsyncMock(return_value=[])):
             breakdown, is_compound = await compute_compound_breakdown(mock_db, "ความสุข")
 
         assert is_compound is True
@@ -263,6 +428,33 @@ class TestComputeCompoundBreakdown:
 
         assert breakdown is not None
         assert is_compound is True
+
+    @pytest.mark.asyncio
+    async def test_naa_rak_breakdown_glosses_rak_as_love_not_plant_sense(self):
+        """End-to-end regression for the original bug report: น่ารัก →
+        น่า (morpheme map) + รัก (Volubilis, real sense ordering incl. the
+        binomial) must surface รัก as "love"/"like", not a scientific or
+        technical sense."""
+        from src.utils.compound import compute_compound_breakdown
+
+        mock_db = AsyncMock()
+        mock_db.scalar = AsyncMock(return_value=None)  # no own cards
+
+        rak_senses = [
+            {"english": e, "level": None, "pos": None} for e in (
+                "Calotropis gigantea", "Crown flower", "lacquer", "love",
+                "be fond of", "be keen on", "cherish", "adore", "like",
+            )
+        ]
+        with patch("src.utils.compound.decompose", return_value=["น่า", "รัก"]), \
+             patch("src.db.services.lexicon_service.lookup_ranked", new=AsyncMock(return_value=rak_senses)):
+            breakdown, is_compound = await compute_compound_breakdown(mock_db, "น่ารัก")
+
+        assert is_compound is True
+        assert breakdown is not None
+        rak_part = next(p for p in breakdown if p["thai"] == "รัก")
+        assert rak_part["gloss"] in ("love", "like")
+        assert rak_part["gloss_source"] == "volubilis"
 
     @pytest.mark.asyncio
     async def test_atomic_word_returns_false(self):

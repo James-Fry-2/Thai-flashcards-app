@@ -5,6 +5,7 @@ import DecksPage from './pages/DecksPage'
 import DeckDetailPage from './pages/DeckDetailPage'
 import UploadPage from './pages/UploadPage'
 import ReviewPage from './pages/ReviewPage'
+import QuizPage from './pages/QuizPage'
 import TopicsPage from './pages/TopicsPage'
 import AtRiskPage from './pages/AtRiskPage'
 import SearchPage from './pages/SearchPage'
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/topics/:topicId" element={<TopicsPage />} />
         <Route path="/topics/:topicId/review" element={<ReviewPage />} />
         <Route path="/review/library" element={<ReviewPage />} />
+        <Route path="/quiz" element={<QuizPage />} />
         <Route path="/at-risk" element={<AtRiskPage />} />
         <Route path="/at-risk/review" element={<ReviewPage />} />
         <Route path="/search" element={<SearchPage />} />

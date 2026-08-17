@@ -6,11 +6,27 @@ Source: the VOLUBILIS DATABASE edition (https://belisan-volubilis.blogspot.com/)
 confirmed against v.26.2 (Jul. 2026), 114,577 entries. This is a different file
 from the "Duo Max FRA" edition and has a different column order — do not reuse
 column indices tuned for that file. Two header rows precede the data; columns
-used here (0-indexed, verified against this file's actual header row):
-    1  EASYTHAI      -> lexicon.romanization
-    4  THA (Thai)    -> lexicon.thai
-    5  ENG (English) -> lexicon.english (split on ';' into one row per sense)
-    7  TYPE          -> lexicon.pos
+used here (0-indexed, verified directly against this file's actual header
+row — cross-check any new source file's header before trusting these):
+    1  EASYTHAI        -> lexicon.romanization
+    4  THA (Thai)      -> lexicon.thai
+    5  ENG (English)   -> lexicon.english (split on ';' into one row per sense)
+    7  TYPE            -> lexicon.pos
+    8  USAGE           -> lexicon.usage (register marker, e.g. "(obsol.)")
+    9  SCIENT/abbrev.  -> lexicon.scientific_name (binomial, e.g. "Calotropis
+                          gigantea R. Br." -> stored as "Calotropis gigantea")
+
+This edition has no per-row Level (B/A1/A2/s) column, so lexicon.level is
+always written as NULL here — do not fabricate a value. If a future source
+file does carry a level column, wire it in as its own mapped column rather
+than guessing from other fields.
+
+A scientific binomial sometimes also appears as its own sense inside the ENG
+cell (e.g. "Calotropis gigantea ; Crown flower" alongside
+SCIENT/abbrev.="Calotropis gigantea R. Br."). Because it's already captured
+in scientific_name, that sense is dropped from the split ENG list so it never
+becomes its own gloss row — this is what stops "Calotropis gigantea" from
+ever surfacing as a compound-breakdown gloss.
 
 Idempotent: clears existing source="volubilis" rows before re-ingesting.
 A real (non-dry-run) run refuses to proceed if it would replace more existing
@@ -29,6 +45,7 @@ Flags:
 """
 import argparse
 import asyncio
+import re
 import shutil
 import sys
 from datetime import datetime, timezone
@@ -48,6 +65,31 @@ _THAI_COL = 4       # column 5, "THA (Thai)"
 _ROMAN_COL = 1       # column 2, "EASYTHAI"
 _ENGLISH_COL = 5       # column 6, "ENG (English)"
 _POS_COL = 7       # column 8, "TYPE"
+_USAGE_COL = 8       # column 9, "USAGE"
+_SCIENT_COL = 9       # column 10, "SCIENT/abbrev."
+
+# Leading "Genus species" from a SCIENT/abbrev. cell like "Calotropis gigantea
+# R. Br." — drops the trailing taxonomic authorship abbreviation.
+_SCIENTIFIC_NAME_RE = re.compile(r"^([A-Z][a-zA-Z\-]+\s+[a-z][a-zA-Z\-]+)")
+
+
+def _clean_usage(cell) -> str | None:
+    if not cell:
+        return None
+    text = str(cell).strip()
+    if text.startswith("(") and text.endswith(")"):
+        text = text[1:-1].strip()
+    return text or None
+
+
+def _parse_scientific_name(cell) -> str | None:
+    if not cell:
+        return None
+    text = str(cell).strip()
+    if not text:
+        return None
+    match = _SCIENTIFIC_NAME_RE.match(text)
+    return match.group(1) if match else text
 
 
 def _parse_rows(source_file: str):
@@ -70,17 +112,31 @@ def _parse_rows(source_file: str):
         romanization = str(roman).strip() or None if roman else None
         pos_cell = row[_POS_COL]
         pos = str(pos_cell).strip() or None if pos_cell else None
+        usage = _clean_usage(row[_USAGE_COL])
+        scientific_name = _parse_scientific_name(row[_SCIENT_COL])
 
-        for sense in str(english_cell).split(";"):
-            english = sense.replace("\xa0", " ").strip()
-            if english:
-                yield {
-                    "thai": thai,
-                    "romanization": romanization,
-                    "english": english,
-                    "pos": pos,
-                    "source": "volubilis",
-                }
+        senses = [
+            sense.replace("\xa0", " ").strip()
+            for sense in str(english_cell).split(";")
+        ]
+        senses = [sense for sense in senses if sense]
+        if scientific_name:
+            senses = [
+                sense for sense in senses
+                if sense.lower() != scientific_name.lower()
+            ]
+
+        for english in senses:
+            yield {
+                "thai": thai,
+                "romanization": romanization,
+                "english": english,
+                "pos": pos,
+                "usage": usage,
+                "scientific_name": scientific_name,
+                "level": None,
+                "source": "volubilis",
+            }
 
 
 def _backup_sqlite_db() -> None:

@@ -13,3 +13,6 @@ class Lexicon(Base):
     english: Mapped[str] = mapped_column(Text, nullable=False)
     pos: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="volubilis", nullable=False)
+    scientific_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    level: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    usage: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
