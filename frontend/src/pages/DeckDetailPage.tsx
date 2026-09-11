@@ -9,6 +9,25 @@ import type { Deck, Card } from '../types'
 
 const PAGE_SIZE = 50
 
+/** Windowed page list: first, last, and neighbors of current — with '…' gaps, so the
+ *  pager stays a fixed width no matter how many pages there are. */
+function getPageWindow(current: number, total: number): (number | 'ellipsis')[] {
+  const neighbors = [current - 1, current, current + 1]
+  const keep = new Set(
+    [0, total - 1, ...neighbors].filter((n) => n >= 0 && n < total)
+  )
+  const sorted = Array.from(keep).sort((a, b) => a - b)
+
+  const result: (number | 'ellipsis')[] = []
+  let prev: number | undefined
+  for (const n of sorted) {
+    if (prev !== undefined && n - prev > 1) result.push('ellipsis')
+    result.push(n)
+    prev = n
+  }
+  return result
+}
+
 interface CardsPage {
   items: Card[]
   total: number
@@ -38,7 +57,7 @@ export default function DeckDetailPage() {
       api
         .get(
           `/decks/${id}/cards?offset=${offset}&limit=${PAGE_SIZE}` +
-            (flaggedOnly ? '&translation_status=flagged' : '')
+            (flaggedOnly ? '&needs_attention=true' : '')
         )
         .then((r: { data: CardsPage }) => r.data),
     { keepPreviousData: true }
@@ -96,9 +115,9 @@ export default function DeckDetailPage() {
               setFlaggedOnly((v) => !v)
               setPage(0)
             }}
-            title="Show only cards with a possible mistranslation"
+            title="Show only cards with a possible mistranslation or an open flag"
           >
-            <Flag size={14} /> Flagged
+            <Flag size={14} /> Needs attention
           </button>
           <button className="btn-secondary text-sm" onClick={handleExport}>
             <Download size={14} /> Export Anki
@@ -144,7 +163,7 @@ export default function DeckDetailPage() {
         </div>
       ) : cards.length === 0 && flaggedOnly ? (
         <div className="card text-center py-12 text-gray-400">
-          No flagged translations. Nice.
+          Nothing needs attention. Nice.
         </div>
       ) : (
         <div className="space-y-2">
@@ -177,7 +196,7 @@ export default function DeckDetailPage() {
                     <td className="px-4 py-3 thai font-medium text-base">
                       <span className="inline-flex items-center gap-1.5">
                         {card.thai}
-                        {card.translation_status === 'flagged' && (
+                        {(card.translation_status === 'flagged' || card.has_open_flags) && (
                           <Flag size={11} className="text-amber-500 shrink-0" />
                         )}
                       </span>
@@ -234,19 +253,28 @@ export default function DeckDetailPage() {
                 <ChevronLeft size={14} /> Prev
               </button>
               <div className="flex gap-1">
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button
-                    key={i}
-                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                      i === page
-                        ? 'bg-brand-600 text-white'
-                        : 'text-gray-500 hover:bg-gray-100'
-                    }`}
-                    onClick={() => setPage(i)}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                {getPageWindow(page, totalPages).map((p, idx) =>
+                  p === 'ellipsis' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className="w-8 h-8 flex items-center justify-center text-gray-400 text-sm"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        p === page
+                          ? 'bg-brand-600 text-white'
+                          : 'text-gray-500 hover:bg-gray-100'
+                      }`}
+                      onClick={() => setPage(p)}
+                    >
+                      {p + 1}
+                    </button>
+                  )
+                )}
               </div>
               <button
                 className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-40"

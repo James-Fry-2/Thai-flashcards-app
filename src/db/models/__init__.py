@@ -14,7 +14,9 @@ from .embeddings import CardEmbedding, TopicEmbedding, TagEmbedding
 from .review_session import ReviewSession
 from .preferences import UserPreferences
 from .lexicon import Lexicon
-from .quiz_option_log import QuizOptionLog
+from .practice import PracticeSession, PracticeAttempt, PracticeOptionLog
+from .card_flag import CardFlag
+from .card_override import CardOverride
 
 __all__ = [
     "Base",
@@ -39,5 +41,9 @@ __all__ = [
     "ReviewSession",
     "UserPreferences",
     "Lexicon",
-    "QuizOptionLog",
+    "PracticeSession",
+    "PracticeAttempt",
+    "PracticeOptionLog",
+    "CardFlag",
+    "CardOverride",
 ]

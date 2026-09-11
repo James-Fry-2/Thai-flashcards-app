@@ -1,14 +1,18 @@
 import io
 import json
+import shutil
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
 from src.config.settings import get_settings
+from src.db.models.card import Card
+from src.db.models.deck import Deck
 from src.db.models.upload import Upload
+from src.db.models.upload_page import UploadPage
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
@@ -178,12 +182,23 @@ async def _book_parent_active_summary(db: AsyncSession, upload: Upload) -> dict:
 # Upload creation
 # ---------------------------------------------------------------------------
 
+async def _require_deck(db: AsyncSession, deck_id: Optional[int]) -> int:
+    """A deck is mandatory: without one, card generation silently no-ops later."""
+    if deck_id is None:
+        raise HTTPException(422, "A deck is required — select a deck before uploading")
+    if await db.get(Deck, deck_id) is None:
+        raise HTTPException(404, f"Deck {deck_id} not found")
+    return deck_id
+
+
 @router.post("/", status_code=202)
 async def create_upload(
     file: UploadFile = File(...),
     deck_id: Optional[int] = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
+    deck_id = await _require_deck(db, deck_id)
+
     settings = get_settings()
     max_bytes = settings.max_upload_size_mb * 1024 * 1024
 
@@ -232,6 +247,8 @@ async def create_book_upload(
     Import a whole book (single PDF → split by chapter) or multiple PDFs
     (one child per file, no confirmation step).
     """
+    deck_id = await _require_deck(db, deck_id)
+
     settings = get_settings()
     max_bytes = settings.max_book_upload_size_mb * 1024 * 1024
 
@@ -735,3 +752,40 @@ async def retry_upload(upload_id: int, db: AsyncSession = Depends(get_db)):
     upload.error_message = None
     await db.commit()
     return _upload_dict(upload)
+
+
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+@router.delete("/{upload_id}", status_code=204)
+async def delete_upload(upload_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete an upload (and, for a book_parent, its chapter children).
+
+    Cards already created from this upload are kept — only their
+    source_upload_id is cleared — since they may already be part of a deck
+    the learner is studying.
+    """
+    upload = await db.get(Upload, upload_id)
+    if not upload:
+        raise HTTPException(404, "Upload not found")
+    if upload.status in ACTIVE_STATUSES:
+        raise HTTPException(409, f"Cannot delete an upload while it is {upload.status}")
+
+    ids = [upload.id]
+    if upload.kind == "book_parent":
+        child_ids = list(await db.scalars(
+            select(Upload.id).where(Upload.parent_upload_id == upload.id)
+        ))
+        ids.extend(child_ids)
+
+    await db.execute(update(Card).where(Card.source_upload_id.in_(ids)).values(source_upload_id=None))
+    await db.execute(delete(UploadPage).where(UploadPage.upload_id.in_(ids)))
+    await db.execute(delete(Upload).where(Upload.id.in_(ids)))
+    await db.commit()
+
+    settings = get_settings()
+    for uid in ids:
+        shutil.rmtree(Path(settings.media_dir) / "uploads" / str(uid), ignore_errors=True)
+
+    return Response(status_code=204)

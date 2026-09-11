@@ -1,19 +1,22 @@
 import { CompoundPart } from '../types'
 
-// Single choke-point for chip background. Today every part gets the same
-// neutral amber tone; a future familiarity feature will key this off the
+// Single choke-point for chip background. `sourceIsUser` tints the whole
+// breakdown when it came from a user override rather than the derived
+// dictionary breakdown (card.compound_breakdown_source === 'user'); a
+// future familiarity feature will key the per-part tone off the
 // constituent card's FSRS retrievability (gloss_source === 'card' already
 // marks a part that is an own card).
-function chipTone(_part: CompoundPart): string {
-  return 'bg-amber-50 border-amber-100'
+function chipTone(_part: CompoundPart, sourceIsUser: boolean): string {
+  return sourceIsUser ? 'bg-brand-50 border-brand-200' : 'bg-amber-50 border-amber-100'
 }
 
 interface Props {
   parts: CompoundPart[]
   compact?: boolean
+  sourceIsUser?: boolean
 }
 
-export default function CompoundBreakdown({ parts, compact = false }: Props) {
+export default function CompoundBreakdown({ parts, compact = false, sourceIsUser = false }: Props) {
   return (
     <div
       className={
@@ -27,7 +30,7 @@ export default function CompoundBreakdown({ parts, compact = false }: Props) {
           {i > 0 && <span className="text-gray-300 text-xs">+</span>}
           <span
             className={
-              `inline-flex flex-col items-center rounded-lg border text-center ${chipTone(part)} ` +
+              `inline-flex flex-col items-center rounded-lg border text-center ${chipTone(part, sourceIsUser)} ` +
               (compact ? 'px-2 py-1 min-w-[40px]' : 'px-2.5 py-1.5 min-w-[48px]')
             }
           >

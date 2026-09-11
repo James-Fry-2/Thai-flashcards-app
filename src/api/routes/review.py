@@ -11,6 +11,8 @@ from src.db.models.card import Card
 from src.db.models.card_schedule import CardSchedule
 from src.db.models.review_log import ReviewLog
 from src.db.models.review_session import ReviewSession
+from src.utils.card_overrides import apply_overrides, load_open_flag_targets, load_overrides
+from src.utils.current_user import current_user
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -26,7 +28,12 @@ class FromCardsRequest(BaseModel):
     direction: str = "th_to_en"
 
 
-def _build_card_payload(c: Card, s: CardSchedule) -> dict:
+def _build_card_payload(
+    c: Card,
+    s: CardSchedule,
+    overrides: Optional[dict] = None,
+    open_flags: Optional[list] = None,
+) -> dict:
     import json as _json
 
     def _parse(v):
@@ -37,7 +44,7 @@ def _build_card_payload(c: Card, s: CardSchedule) -> dict:
         except Exception:
             return None
 
-    return {
+    d = {
         "id": c.id,
         "card_id": c.id,
         "schedule_id": s.id,
@@ -53,6 +60,10 @@ def _build_card_payload(c: Card, s: CardSchedule) -> dict:
         "translation_status": c.translation_status,
         "translation_candidates": _parse(c.translation_candidates),
     }
+    d = apply_overrides(d, overrides or {})
+    d["open_flag_targets"] = open_flags or []
+    d["has_open_flags"] = bool(open_flags)
+    return d
 
 
 def _interleave_mixed(
@@ -160,7 +171,14 @@ async def start_session(
     await db.commit()
     await db.refresh(db_session)
 
-    cards = [_build_card_payload(c, s) for c, s in card_schedule_pairs]
+    user_id = current_user()
+    session_card_ids = [c.id for c, _ in card_schedule_pairs]
+    overrides_map = await load_overrides(db, session_card_ids, user_id)
+    flags_map = await load_open_flag_targets(db, session_card_ids, user_id)
+    cards = [
+        _build_card_payload(c, s, overrides_map.get(c.id), flags_map.get(c.id))
+        for c, s in card_schedule_pairs
+    ]
 
     return {"session_id": db_session.id, "total_cards": len(cards), "cards": cards}
 
@@ -197,7 +215,14 @@ async def start_session_from_cards(
     await db.commit()
     await db.refresh(db_session)
 
-    cards = [_build_card_payload(c, s) for c, s in ordered_pairs]
+    user_id = current_user()
+    ordered_card_ids = [c.id for c, _ in ordered_pairs]
+    overrides_map = await load_overrides(db, ordered_card_ids, user_id)
+    flags_map = await load_open_flag_targets(db, ordered_card_ids, user_id)
+    cards = [
+        _build_card_payload(c, s, overrides_map.get(c.id), flags_map.get(c.id))
+        for c, s in ordered_pairs
+    ]
 
     response: dict = {"session_id": db_session.id, "total_cards": len(cards), "cards": cards}
     if skipped_ids:

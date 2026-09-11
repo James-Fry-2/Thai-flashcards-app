@@ -156,30 +156,37 @@ export default function UploadPage() {
         </button>
       </div>
 
-      {/* Deck selector (shared) */}
+      {/* Deck selector (shared) — required, since cards can't be generated without one */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Add cards to deck
+          Add cards to deck <span className="text-red-500">*</span>
         </label>
         <select
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
           value={selectedDeckId}
           onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : '')}
         >
-          <option value="">— No deck (import later) —</option>
+          <option value="" disabled>
+            {decks.length ? 'Select a deck…' : 'No decks yet — create one first'}
+          </option>
           {decks.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
           ))}
         </select>
+        {!selectedDeckId && (
+          <p className="text-xs text-gray-400 mt-1">
+            A deck is required — without one, cards can't be generated from your upload.
+          </p>
+        )}
       </div>
 
       {mode === 'single' ? (
         <>
           <UploadDropzone
             onFile={(file) => uploadMutation.mutate(file)}
-            disabled={uploadMutation.isLoading || isProcessing}
+            disabled={!selectedDeckId || uploadMutation.isLoading || isProcessing}
           />
 
           {displayUpload && displayUpload.kind !== 'book_parent' && (
@@ -395,7 +402,7 @@ function BookImportPanel({
 
       <button
         onClick={() => bookMutation.mutate()}
-        disabled={!files.length || !sourceTitle.trim() || bookMutation.isLoading}
+        disabled={!files.length || !sourceTitle.trim() || !selectedDeckId || bookMutation.isLoading}
         className="w-full py-2 rounded-lg bg-brand-600 text-white font-medium text-sm hover:bg-brand-700 disabled:opacity-50"
       >
         {bookMutation.isLoading ? (

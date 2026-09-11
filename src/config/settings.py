@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     card_generation_model: str = "claude-opus-4-6"
     card_tagging_provider: str = "claude"
     card_tagging_model: str = "claude-haiku-4-5-20251001"
+    compound_breakdown_provider: str = "claude"
+    compound_breakdown_model: str = "claude-haiku-4-5-20251001"
+    translation_verify_provider: str = "claude"
+    translation_verify_model: str = "claude-haiku-4-5-20251001"
 
     # Embeddings
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

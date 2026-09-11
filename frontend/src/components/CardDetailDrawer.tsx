@@ -1,9 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { X, Plus, ArrowRight, ChevronLeft, Pencil, Check } from 'lucide-react'
+import { X, Plus, ArrowRight, ChevronLeft, Pencil, Check, Flag, RotateCcw, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../services/api'
-import type { CardDetail, SimilarCard, Tag, Topic, CompoundPart } from '../types'
+import type {
+  CardDetail,
+  SimilarCard,
+  Tag,
+  Topic,
+  CompoundPart,
+  FlagListItem,
+  TranslationCandidates,
+  CompoundCandidates,
+  EnrichBreakdownResponse,
+  VerifyTranslationResponse,
+} from '../types'
 import CompoundBreakdown from './CompoundBreakdown'
 
 interface Props {
@@ -26,6 +37,8 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
   const navigateTo = (id: number) => setNavStack((s) => [...s, id])
   const navigateBack = () => setNavStack((s) => s.slice(0, -1))
 
+  const [compoundCorrectionOpen, setCompoundCorrectionOpen] = useState(false)
+
   const { data: card, isLoading } = useQuery<CardDetail>(
     ['card', cardId],
     () => api.get(`/cards/${cardId}`).then((r) => r.data),
@@ -34,6 +47,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
 
   const invalidate = () => {
     qc.invalidateQueries(['card', cardId])
+    qc.invalidateQueries(['open-flags', cardId])
     if (deckId !== undefined) qc.invalidateQueries(['cards', deckId])
   }
 
@@ -41,6 +55,29 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
     ['similar-cards', cardId],
     () => api.get(`/cards/${cardId}/similar?limit=10`).then((r) => r.data),
     { enabled: cardId !== null }
+  )
+
+  // GET /flags has no card_id filter (single-user app, modest flag volume) —
+  // fetch this user's open queue and narrow to this card client-side.
+  const { data: openFlagItems = [] } = useQuery<FlagListItem[]>(
+    ['open-flags', cardId],
+    () =>
+      api
+        .get('/flags', { params: { status: 'open', limit: 200 } })
+        .then((r) => (r.data.items as FlagListItem[]).filter((f) => f.card_id === cardId)),
+    { enabled: cardId !== null && !!card?.has_open_flags }
+  )
+
+  const { data: translationCandidates } = useQuery<TranslationCandidates>(
+    ['translation-candidates', cardId],
+    () => api.get(`/cards/${cardId}/translation-candidates`).then((r) => r.data),
+    { enabled: cardId !== null && card?.translation_status === 'flagged' }
+  )
+
+  const { data: compoundCandidates } = useQuery<CompoundCandidates>(
+    ['compound-candidates', cardId],
+    () => api.get(`/cards/${cardId}/compound-candidates`).then((r) => r.data),
+    { enabled: cardId !== null && compoundCorrectionOpen }
   )
 
   const updateCard = useMutation(
@@ -58,6 +95,90 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
         toast.success('Translation resolved')
       },
     }
+  )
+
+  const verifyTranslation = useMutation<VerifyTranslationResponse>(() =>
+    api.post(`/cards/${cardId}/verify-translation`).then((r) => r.data)
+  )
+
+  const enrichBreakdown = useMutation<EnrichBreakdownResponse>(
+    () => api.post(`/cards/${cardId}/enrich-breakdown`).then((r) => r.data),
+    {
+      onSuccess: (result) => {
+        if (result.status === 'no_gaps') {
+          toast.success('Already fully glossed')
+        } else if (result.status === 'enriched') {
+          if (result.persisted && result.filled && result.filled.length > 0) {
+            invalidate()
+            toast.success('Breakdown updated')
+          } else if (result.filled && result.filled.length > 0) {
+            // Low-confidence fill — not written to compound_breakdown.
+            // Rendered as an unsaved suggestion in BreakdownSection instead.
+            toast('Low-confidence result — not saved automatically', { icon: '⚠️' })
+          } else {
+            toast('No gloss could be added for the missing part(s)', { icon: 'ℹ️' })
+          }
+        }
+      },
+    }
+  )
+
+  // Advisory results are per-card; drop them when navigating to another card
+  // so a stale verdict/confidence from the previous card can't linger.
+  useEffect(() => {
+    verifyTranslation.reset()
+    enrichBreakdown.reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardId])
+
+  // A low-confidence fill is never written to compound_breakdown — surface
+  // it as an unsaved suggestion the user has to act on explicitly, rather
+  // than silently discarding it after the toast disappears.
+  const unsavedFill =
+    enrichBreakdown.data?.status === 'enriched' &&
+    !enrichBreakdown.data.persisted &&
+    (enrichBreakdown.data.filled?.length ?? 0) > 0
+      ? enrichBreakdown.data
+      : undefined
+
+  const deleteOverride = useMutation(
+    (target: 'translation' | 'compound') => api.delete(`/cards/${cardId}/overrides/${target}`),
+    {
+      onSuccess: () => {
+        invalidate()
+        toast.success('Reverted to dictionary')
+      },
+    }
+  )
+
+  const putCompoundOverride = useMutation(
+    (payload: { suppressed?: boolean; parts?: CompoundPart[] }) =>
+      api.put(`/cards/${cardId}/overrides/compound`, { payload }).then((r) => r.data),
+    {
+      onSuccess: () => {
+        invalidate()
+        setCompoundCorrectionOpen(false)
+        toast.success('Breakdown updated')
+      },
+    }
+  )
+
+  const createFlag = useMutation(
+    (payload: { target: string; note?: string }) =>
+      api.post(`/cards/${cardId}/flags`, payload).then((r) => r.data),
+    {
+      onSuccess: () => {
+        invalidate()
+        setCompoundCorrectionOpen(false)
+        toast.success('Flagged for review')
+      },
+    }
+  )
+
+  const resolveFlag = useMutation(
+    ({ id, status }: { id: number; status: 'resolved' | 'dismissed' }) =>
+      api.patch(`/flags/${id}`, { status }).then((r) => r.data),
+    { onSuccess: invalidate }
   )
 
   const removeTag = useMutation(
@@ -146,15 +267,46 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
 
           {card && (
             <>
+              {/* Open flags this user filed on this card */}
+              {openFlagItems.length > 0 && (
+                <OpenFlagsBanner
+                  flags={openFlagItems}
+                  onResolve={(id) => resolveFlag.mutate({ id, status: 'resolved' })}
+                  onDismiss={(id) => resolveFlag.mutate({ id, status: 'dismissed' })}
+                  isSaving={resolveFlag.isLoading}
+                />
+              )}
+
               {/* Translation flag */}
               {card.translation_status === 'flagged' && (
                 <TranslationFlag
                   english={card.english}
-                  candidates={card.translation_candidates ?? []}
+                  candidates={translationCandidates?.candidates ?? []}
+                  allowFreeText={translationCandidates?.allow_free_text ?? true}
                   onKeep={() => resolveTranslation.mutate({ action: 'keep' })}
                   onCorrect={(value) => resolveTranslation.mutate({ action: 'correct', english: value })}
                   isSaving={resolveTranslation.isLoading}
+                  onCheckAI={() => verifyTranslation.mutate()}
+                  isChecking={verifyTranslation.isLoading}
+                  aiResult={verifyTranslation.data}
                 />
+              )}
+
+              {/* Translation override note — visible even once translation_status
+                  has moved past 'flagged' (e.g. right after a 'correct'). */}
+              {card.english_source === 'user' && card.translation_status !== 'flagged' && (
+                <div className="flex items-center justify-between bg-brand-50 border border-brand-100 rounded-xl px-4 py-2.5 text-xs">
+                  <span className="text-brand-700">
+                    Using your correction: <span className="font-medium">{card.english}</span>
+                  </span>
+                  <button
+                    onClick={() => deleteOverride.mutate('translation')}
+                    disabled={deleteOverride.isLoading}
+                    className="flex items-center gap-1 text-brand-600 hover:text-brand-800 shrink-0 ml-3"
+                  >
+                    <RotateCcw size={11} /> Revert
+                  </button>
+                </div>
               )}
 
               {/* Tags section */}
@@ -229,8 +381,30 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
               )}
 
               {/* Compound breakdown */}
-              {card.compound_breakdown && card.compound_breakdown.length > 0 && (
-                <BreakdownSection parts={card.compound_breakdown} />
+              {card.is_compound && (
+                <BreakdownSection
+                  parts={card.compound_breakdown ?? []}
+                  suppressed={!!card.compound_suppressed}
+                  sourceIsUser={card.compound_breakdown_source === 'user'}
+                  hasOverride={card.compound_breakdown_source === 'user' || !!card.compound_suppressed}
+                  correctionOpen={compoundCorrectionOpen}
+                  onOpenCorrection={() => setCompoundCorrectionOpen((v) => !v)}
+                  onRevert={() => deleteOverride.mutate('compound')}
+                  isRevertSaving={deleteOverride.isLoading}
+                  candidates={compoundCorrectionOpen ? compoundCandidates : undefined}
+                  onSuppress={() => putCompoundOverride.mutate({ suppressed: true })}
+                  onSaveParts={(parts) => putCompoundOverride.mutate({ parts })}
+                  onFileFlag={(note) => createFlag.mutate({ target: 'compound', note })}
+                  isSaving={putCompoundOverride.isLoading || createFlag.isLoading}
+                  onFillGaps={() => enrichBreakdown.mutate()}
+                  isFillingGaps={enrichBreakdown.isLoading}
+                  unsavedFill={unsavedFill}
+                  onDismissFill={() => enrichBreakdown.reset()}
+                  onSuppressUnsavedFill={() => {
+                    enrichBreakdown.reset()
+                    putCompoundOverride.mutate({ suppressed: true })
+                  }}
+                />
               )}
 
               {/* Links */}
@@ -619,20 +793,31 @@ function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; 
 function TranslationFlag({
   english,
   candidates,
+  allowFreeText,
   onKeep,
   onCorrect,
   isSaving,
+  onCheckAI,
+  isChecking,
+  aiResult,
 }: {
   english: string
   candidates: string[]
+  allowFreeText: boolean
   onKeep: () => void
   onCorrect: (value: string) => void
   isSaving: boolean
+  onCheckAI: () => void
+  isChecking: boolean
+  aiResult?: VerifyTranslationResponse
 }) {
   const [draft, setDraft] = useState('')
 
   const chosen = draft.trim()
   const canCorrect = chosen.length > 0 && chosen !== english
+  // Candidates are always the primary affordance; free text is the
+  // fallback shown only when there's genuinely nothing to pick from.
+  const showFreeText = allowFreeText && candidates.length === 0
 
   return (
     <section className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3.5">
@@ -675,13 +860,37 @@ function TranslationFlag({
         </div>
       )}
 
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Or type a correction…"
-        disabled={isSaving}
-        className="w-full text-xs border border-amber-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
-      />
+      {showFreeText && (
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Type a correction…"
+          disabled={isSaving}
+          className="w-full text-xs border border-amber-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+        />
+      )}
+
+      {aiResult?.status === 'checked' && (
+        <p
+          className={`text-xs mb-3 rounded-lg px-2.5 py-1.5 ${
+            aiResult.verdict === 'likely_error'
+              ? 'bg-red-50 text-red-700'
+              : aiResult.verdict === 'likely_ok'
+                ? 'bg-green-50 text-green-700'
+                : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          <span className="font-medium">
+            AI:{' '}
+            {aiResult.verdict === 'likely_error'
+              ? 'likely a real mistranslation'
+              : aiResult.verdict === 'likely_ok'
+                ? 'likely a false flag'
+                : "not sure"}
+          </span>
+          {aiResult.reason && <span> — {aiResult.reason}</span>}
+        </p>
+      )}
 
       <div className="flex gap-2">
         <button
@@ -699,18 +908,392 @@ function TranslationFlag({
           Use correction
         </button>
       </div>
+      <button
+        onClick={onCheckAI}
+        disabled={isSaving || isChecking}
+        className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
+      >
+        <Sparkles size={11} /> {isChecking ? 'Checking…' : 'Check with AI'}
+      </button>
     </section>
   )
 }
 
-function BreakdownSection({ parts }: { parts: CompoundPart[] }) {
+function OpenFlagsBanner({
+  flags,
+  onResolve,
+  onDismiss,
+  isSaving,
+}: {
+  flags: FlagListItem[]
+  onResolve: (id: number) => void
+  onDismiss: (id: number) => void
+  isSaving: boolean
+}) {
+  return (
+    <section className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 space-y-2.5">
+      <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
+        <Flag size={12} className="text-amber-500" /> Your open flags
+      </h3>
+      {flags.map((f) => (
+        <div key={f.id} className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-xs font-medium text-gray-700 capitalize">{f.target}</span>
+            {f.note && <p className="text-xs text-gray-500 mt-0.5">{f.note}</p>}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => onDismiss(f.id)}
+              disabled={isSaving}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => onResolve(f.id)}
+              disabled={isSaving}
+              className="text-xs text-brand-600 hover:text-brand-800 font-medium"
+            >
+              Resolve
+            </button>
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function BreakdownSection({
+  parts,
+  suppressed,
+  sourceIsUser,
+  hasOverride,
+  correctionOpen,
+  onOpenCorrection,
+  onRevert,
+  isRevertSaving,
+  candidates,
+  onSuppress,
+  onSaveParts,
+  onFileFlag,
+  isSaving,
+  onFillGaps,
+  isFillingGaps,
+  unsavedFill,
+  onDismissFill,
+  onSuppressUnsavedFill,
+}: {
+  parts: CompoundPart[]
+  suppressed: boolean
+  sourceIsUser: boolean
+  hasOverride: boolean
+  correctionOpen: boolean
+  onOpenCorrection: () => void
+  onRevert: () => void
+  isRevertSaving: boolean
+  candidates: CompoundCandidates | undefined
+  onSuppress: () => void
+  onSaveParts: (parts: CompoundPart[]) => void
+  onFileFlag: (note: string) => void
+  isSaving: boolean
+  onFillGaps: () => void
+  isFillingGaps: boolean
+  unsavedFill?: EnrichBreakdownResponse
+  onDismissFill: () => void
+  onSuppressUnsavedFill: () => void
+}) {
+  // Available on every compound card, not just ones with a stored gap — a
+  // card whose breakdown never surfaced (compound_surface_min_gloss_ratio
+  // held it back) still has no chips here, and the backend recomputes the
+  // segmentation for those on demand. A suppressed card is excluded: the
+  // user has already said it isn't a compound, so there's nothing to fill.
+  const showFillGaps = !suppressed
+
   return (
     <section>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        Breakdown
-      </h3>
-      <CompoundBreakdown parts={parts} />
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Breakdown
+        </h3>
+        <div className="flex items-center gap-2">
+          {hasOverride && (
+            <button
+              onClick={onRevert}
+              disabled={isRevertSaving}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+              title="Revert to dictionary breakdown"
+            >
+              <RotateCcw size={11} /> Revert
+            </button>
+          )}
+          <button
+            onClick={onOpenCorrection}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+            title="Correct this breakdown"
+          >
+            <Pencil size={11} /> Correct
+          </button>
+        </div>
+      </div>
+
+      {suppressed ? (
+        <p className="text-xs text-gray-400">You marked this as not a compound.</p>
+      ) : parts.length > 0 ? (
+        <CompoundBreakdown parts={parts} sourceIsUser={sourceIsUser} />
+      ) : (
+        <p className="text-xs text-gray-400">
+          This word decomposes, but not every part has a clear gloss, so the breakdown isn't
+          shown by default.
+        </p>
+      )}
+
+      {showFillGaps && !unsavedFill && (
+        <button
+          onClick={onFillGaps}
+          disabled={isFillingGaps}
+          className="mt-2 flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
+        >
+          <Sparkles size={11} /> {isFillingGaps ? 'Filling…' : 'Fill gaps with AI'}
+        </button>
+      )}
+
+      {unsavedFill && (
+        <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+          <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide mb-1.5">
+            ⚠️ Low confidence — not saved
+          </p>
+          <div className="space-y-1 mb-2">
+            {unsavedFill.filled?.map((thai) => {
+              const part = unsavedFill.parts?.find((p) => p.thai === thai)
+              return (
+                <p key={thai} className="text-xs text-amber-800">
+                  <span className="thai font-medium">{thai}</span>
+                  {' → '}
+                  <span className="italic">{part?.gloss ?? '?'}</span>
+                  <span className="text-amber-500">?</span>
+                </p>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-amber-700/80 mb-2">
+            This word may be a loanword or false split rather than a real compound — the AI
+            wasn't confident enough to save this automatically.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={onDismissFill}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-amber-700 hover:bg-amber-100 transition-colors"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={onSuppressUnsavedFill}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+            >
+              Suppress as not-a-compound
+            </button>
+          </div>
+        </div>
+      )}
+
+      {correctionOpen && candidates && (
+        <CompoundCorrectionPanel
+          candidates={candidates}
+          onSuppress={onSuppress}
+          onSave={onSaveParts}
+          onFileFlag={onFileFlag}
+          onClose={onOpenCorrection}
+          isSaving={isSaving}
+        />
+      )}
+      {correctionOpen && !candidates && (
+        <p className="text-xs text-gray-400 mt-2">Loading candidates…</p>
+      )}
     </section>
+  )
+}
+
+function CompoundCorrectionPanel({
+  candidates,
+  onSuppress,
+  onSave,
+  onFileFlag,
+  onClose,
+  isSaving,
+}: {
+  candidates: CompoundCandidates
+  onSuppress: () => void
+  onSave: (parts: CompoundPart[]) => void
+  onFileFlag: (note: string) => void
+  onClose: () => void
+  isSaving: boolean
+}) {
+  const currentThaiSeq = candidates.current.map((p) => p.thai)
+  const initialSeg =
+    candidates.segmentations.find((s) => s.is_current)?.parts ??
+    (currentThaiSeq.length ? currentThaiSeq : candidates.segmentations[0]?.parts ?? [])
+
+  const [segThai, setSegThai] = useState<string[]>(initialSeg)
+  const [noneOfThese, setNoneOfThese] = useState(false)
+  const [flagNote, setFlagNote] = useState('')
+  const [glossChoice, setGlossChoice] = useState<Record<string, { gloss: string; source: string }>>({})
+  const [freeTextOpen, setFreeTextOpen] = useState<Record<string, boolean>>({})
+
+  function currentGlossFor(thai: string): { gloss: string; source: string } | null {
+    if (glossChoice[thai]) return glossChoice[thai]
+    const options = candidates.part_glosses[thai] ?? []
+    const current = options.find((o) => o.is_current)
+    if (current) return { gloss: current.gloss, source: current.source }
+    return options[0] ? { gloss: options[0].gloss, source: options[0].source } : null
+  }
+
+  function buildParts(): CompoundPart[] {
+    return segThai.map((thai) => {
+      const chosen = currentGlossFor(thai)
+      const existing = candidates.current.find((p) => p.thai === thai)
+      return {
+        thai,
+        romanization: existing?.romanization ?? null,
+        gloss: chosen?.gloss ?? null,
+        gloss_source: (chosen?.source as CompoundPart['gloss_source']) ?? null,
+      }
+    })
+  }
+
+  return (
+    <div className="mt-3 border border-gray-200 rounded-xl p-3 space-y-3 bg-gray-50">
+      <button
+        onClick={onSuppress}
+        disabled={isSaving}
+        className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-left transition-colors"
+      >
+        Not a compound — stop showing a breakdown
+      </button>
+
+      <div>
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          Different split
+        </p>
+        <div className="space-y-1.5">
+          {candidates.segmentations.map((seg, i) => (
+            <label key={i} className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="radio"
+                checked={!noneOfThese && seg.parts.join('|') === segThai.join('|')}
+                onChange={() => {
+                  setNoneOfThese(false)
+                  setSegThai(seg.parts)
+                  setGlossChoice({})
+                }}
+              />
+              <span className="thai">{seg.parts.join(' + ')}</span>
+              {seg.is_current && <span className="text-[10px] text-gray-400">(current)</span>}
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <input type="radio" checked={noneOfThese} onChange={() => setNoneOfThese(true)} />
+            <span className="text-gray-600">None of these is right</span>
+          </label>
+        </div>
+      </div>
+
+      {noneOfThese ? (
+        <div>
+          <textarea
+            value={flagNote}
+            onChange={(e) => setFlagNote(e.target.value)}
+            placeholder="What's wrong with the segmentation?"
+            rows={2}
+            disabled={isSaving}
+            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onFileFlag(flagNote)}
+              disabled={isSaving}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+            >
+              File flag
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Meaning per part
+            </p>
+            <div className="space-y-2">
+              {segThai.map((thai) => {
+                const options = candidates.part_glosses[thai] ?? []
+                const chosen = currentGlossFor(thai)
+                return (
+                  <div key={thai}>
+                    <p className="thai text-xs text-gray-600 mb-1">{thai}</p>
+                    <div className="flex flex-wrap gap-1 items-center">
+                      {options.map((opt) => (
+                        <button
+                          key={opt.gloss}
+                          onClick={() =>
+                            setGlossChoice((s) => ({ ...s, [thai]: { gloss: opt.gloss, source: opt.source } }))
+                          }
+                          disabled={isSaving}
+                          className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                            chosen?.gloss === opt.gloss
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          {opt.gloss}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setFreeTextOpen((s) => ({ ...s, [thai]: !s[thai] }))}
+                        className="text-[11px] px-2 py-1 rounded-full border border-dashed border-gray-300 text-gray-400 hover:text-gray-600"
+                      >
+                        other…
+                      </button>
+                    </div>
+                    {freeTextOpen[thai] && (
+                      <input
+                        onChange={(e) =>
+                          setGlossChoice((s) => ({ ...s, [thai]: { gloss: e.target.value, source: 'user' } }))
+                        }
+                        placeholder="English meaning…"
+                        disabled={isSaving}
+                        className="mt-1 w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSave(buildParts())}
+              disabled={isSaving || segThai.length === 0}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 transition-colors"
+            >
+              Save
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

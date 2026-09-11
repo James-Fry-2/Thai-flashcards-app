@@ -1,14 +1,14 @@
 import { clsx } from 'clsx'
-import type { QuizItem, QuizOption } from '../types'
+import type { PracticeItem, PracticeOption } from '../types'
 
 interface Props {
-  item: QuizItem
-  answered: QuizOption | null // the option the learner picked, once answered
-  onChoose: (option: QuizOption) => void
+  item: PracticeItem
+  answered: PracticeOption | null // the option the learner picked, once answered
+  onChoose: (option: PracticeOption) => void
 }
 
-export default function QuizCard({ item, answered, onChoose }: Props) {
-  const sortedOptions = [...item.options].sort((a, b) => a.position - b.position)
+export default function MCQuestion({ item, answered, onChoose }: Props) {
+  const sortedOptions = [...(item.payload.options ?? [])].sort((a, b) => a.position - b.position)
 
   return (
     <div className="space-y-6">

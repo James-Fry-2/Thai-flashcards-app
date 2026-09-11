@@ -23,8 +23,14 @@ export interface CompoundPart {
   thai: string
   romanization?: string | null
   gloss?: string | null
-  gloss_source?: 'card' | 'morpheme' | 'volubilis' | 'lexicon' | 'llm' | null
+  // 'user' = free-text gloss the learner typed themselves (compound
+  // correction UI); candidate-sourced picks keep their real source (card /
+  // morpheme / volubilis / lexicon), never flattened to 'user'.
+  gloss_source?: 'card' | 'morpheme' | 'volubilis' | 'lexicon' | 'llm' | 'user' | null
 }
+
+export type FlagTarget = 'translation' | 'compound' | 'romanization' | 'example' | 'other'
+export type OverrideTarget = 'translation' | 'compound'
 
 export interface Card {
   id: number
@@ -48,6 +54,80 @@ export interface Card {
   compound_breakdown?: CompoundPart[] | null
   translation_status?: 'unverified' | 'ok' | 'flagged' | 'confirmed'
   translation_candidates?: string[] | null
+  // User-flags-overrides overlay (present on _card_dict / _build_card_payload
+  // responses; absent/undefined when no override or open flag applies)
+  english_source?: 'user' | null
+  compound_suppressed?: boolean | null
+  compound_breakdown_source?: 'user' | null
+  open_flag_targets?: FlagTarget[]
+  has_open_flags?: boolean
+}
+
+export interface CardFlag {
+  id: number
+  card_id: number
+  user_id: number
+  target: FlagTarget
+  note?: string | null
+  flagged_value?: Record<string, unknown> | null
+  status: 'open' | 'resolved' | 'dismissed'
+  created_at: string
+  resolved_at?: string | null
+}
+
+export interface FlagListItem extends CardFlag {
+  card: { id: number; thai: string; english: string; deck_id: number } | null
+}
+
+export interface TranslationOverridePayload {
+  english: string
+  from_candidate?: boolean
+}
+
+export interface CompoundOverridePayload {
+  suppressed?: boolean
+  parts?: CompoundPart[]
+}
+
+export interface GlossCandidate {
+  gloss: string
+  source: NonNullable<CompoundPart['gloss_source']>
+  is_current?: boolean
+}
+
+export interface SegmentationCandidate {
+  parts: string[]
+  is_current: boolean
+}
+
+export interface CompoundCandidates {
+  segmentations: SegmentationCandidate[]
+  part_glosses: Record<string, GlossCandidate[]>
+  current: CompoundPart[]
+  allow_free_text_gloss: boolean
+}
+
+export interface TranslationCandidates {
+  candidates: string[]
+  allow_free_text: boolean
+}
+
+export interface EnrichBreakdownResponse {
+  status: 'not_compound' | 'no_gaps' | 'enriched'
+  parts?: CompoundPart[]
+  confidence?: 'high' | 'medium' | 'low' | null
+  filled?: string[]
+  // false when `filled` came back non-empty but confidence was too low to
+  // trust — the fill was NOT written to compound_breakdown; render it as an
+  // unsaved suggestion instead (see BreakdownSection's low-confidence panel)
+  persisted?: boolean
+  card?: CardDetail
+}
+
+export interface VerifyTranslationResponse {
+  status: 'not_flagged' | 'checked'
+  verdict?: 'likely_error' | 'likely_ok' | 'unsure' | null
+  reason?: string | null
 }
 
 export interface UserPreferences {
@@ -395,24 +475,42 @@ export interface ProgressPayload {
   trend: TrendPoint[]
 }
 
-export interface QuizOption {
+export interface PracticeOption {
   card_id: number
   english: string
   source: 'target' | 'orthographic' | 'phonetic' | 'tone' | 'semantic' | 'topic' | 'same_type' | 'random'
   position: number
 }
 
-export interface QuizItem {
+export type ExerciseType = 'mc_th_en' | 'recall_th_en'
+
+export interface PracticeItem {
   card_id: number
+  exercise_type: ExerciseType
+  grading: 'binary' | 'self_rated'
   thai: string
   romanization?: string
-  options: QuizOption[]
+  payload: {
+    options?: PracticeOption[]
+  }
+  // recall_th_en only — the back face; never present on a binary-graded item.
+  english?: string
+  example_thai?: string
+  example_english?: string
+  compound_breakdown?: CompoundPart[] | null
 }
 
-export interface QuizSession {
-  quiz_session_id: string
+export interface PracticeSession {
+  session_id: number
   direction: string
-  items: QuizItem[]
+  items: PracticeItem[]
+}
+
+export interface PracticeSummary {
+  total: number
+  by_exercise_type: Record<string, number>
+  binary_accuracy: number | null
+  self_rated_rating_distribution: Record<string, number>
 }
 
 export interface AtRiskCard {

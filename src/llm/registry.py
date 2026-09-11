@@ -9,6 +9,8 @@ class LLMTask(str, Enum):
     IMAGE_GENERATION = "image_generation"  # future
     LINK_SUGGESTION = "link_suggestion"
     CARD_TAGGING = "card_tagging"
+    COMPOUND_BREAKDOWN = "compound_breakdown"
+    TRANSLATION_VERIFY = "translation_verify"
 
 
 _registry: Dict[LLMTask, LLMProvider] = {}
@@ -44,6 +46,16 @@ def register_providers(settings) -> None:
             "provider": settings.card_tagging_provider,
             "model": settings.card_tagging_model,
             "max_tokens": 2048,
+        },
+        LLMTask.COMPOUND_BREAKDOWN: {
+            "provider": settings.compound_breakdown_provider,
+            "model": settings.compound_breakdown_model,
+            "max_tokens": 512,
+        },
+        LLMTask.TRANSLATION_VERIFY: {
+            "provider": settings.translation_verify_provider,
+            "model": settings.translation_verify_model,
+            "max_tokens": 512,
         },
     }
 

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks } from 'lucide-react'
+import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks, Shuffle } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useActiveUploads } from '../hooks/useActiveUploads'
 
@@ -67,6 +67,7 @@ export default function Layout() {
           <NavItem to="/topics" icon={<Tag size={16} />} label="Topics" />
           <NavItem to="/at-risk" icon={<AlertTriangle size={16} />} label="At-risk" />
           <NavItem to="/quiz" icon={<ListChecks size={16} />} label="Quiz" />
+          <NavItem to="/practice" icon={<Shuffle size={16} />} label="Practice" />
           <NavItem to="/books" icon={<BookOpen size={16} />} label="Books" />
           <NavItem to="/upload" icon={<Upload size={16} />} label="Upload" />
           <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" />

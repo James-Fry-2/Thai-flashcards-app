@@ -195,6 +195,12 @@ export default function ReviewPage() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (state !== 'reviewing') return
+      // Don't hijack keystrokes while the user is typing somewhere (e.g. the
+      // flag note field on FlashCard's answer side).
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return
+      }
       if (e.code === 'Space') {
         e.preventDefault()
         setIsFlipped((f) => !f)

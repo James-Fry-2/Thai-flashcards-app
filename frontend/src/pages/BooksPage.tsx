@@ -1,6 +1,8 @@
+import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from 'react-query'
-import { BookOpen, ArrowRight, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from 'react-query'
+import { BookOpen, ArrowRight, CheckCircle, Loader2, AlertCircle, Trash2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import api from '../services/api'
 import type { Upload } from '../types'
 
@@ -50,6 +52,8 @@ export default function BooksPage() {
 
 function BookRow({ book }: { book: Upload }) {
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const [confirming, setConfirming] = useState(false)
   const label = book.source_title || book.filename
   const total = book.chapters_total ?? 0
   const complete = book.chapters_complete ?? 0
@@ -58,8 +62,32 @@ function BookRow({ book }: { book: Upload }) {
   const isProcessing = book.status === 'pending' || book.status === 'processing'
   const awaitingReview = book.stage === 'awaiting_confirmation'
 
+  const deleteBook = useMutation(
+    () => api.delete(`/uploads/${book.id}`),
+    {
+      onSuccess: () => {
+        qc.invalidateQueries('bookUploads')
+        toast.success(`"${label}" deleted`)
+      },
+      onError: () => { toast.error('Failed to delete book') },
+    }
+  )
+
+  const handleDeleteClick = (e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (confirming) {
+      deleteBook.mutate()
+    } else {
+      setConfirming(true)
+    }
+  }
+
   return (
-    <li className="card flex items-center gap-4 py-4 px-5">
+    <li
+      className="card flex items-center gap-4 py-4 px-5"
+      onMouseLeave={() => setConfirming(false)}
+    >
       {/* Icon */}
       <div className="shrink-0">
         {isDone
@@ -85,7 +113,7 @@ function BookRow({ book }: { book: Upload }) {
         </p>
       </div>
 
-      {/* Action */}
+      {/* Actions */}
       {isDone && (
         <button
           onClick={() => navigate(`/uploads/${book.id}/chapters`)}
@@ -102,6 +130,21 @@ function BookRow({ book }: { book: Upload }) {
         >
           Review chapters
           <ArrowRight size={14} />
+        </button>
+      )}
+      {!isProcessing && (
+        <button
+          onClick={handleDeleteClick}
+          disabled={deleteBook.isLoading}
+          title={confirming ? 'Click again to confirm' : 'Delete book'}
+          className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border transition-colors shrink-0 ${
+            confirming
+              ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+              : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500'
+          }`}
+        >
+          <Trash2 size={13} />
+          {confirming && <span className="ml-1">Confirm?</span>}
         </button>
       )}
     </li>

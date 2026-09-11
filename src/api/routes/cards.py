@@ -3,7 +3,7 @@ import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, not_, exists
+from sqlalchemy import select, not_, exists, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
@@ -12,9 +12,12 @@ from src.db.services import embedding_service
 from src.db.services.card_service import count_cards_for_deck
 from src.db.services.preferences_service import get_preferences
 from src.db.models.card import Card
+from src.db.models.card_flag import CardFlag
 from src.db.models.tag import Tag, CardTag
 from src.db.models.topic import Topic, CardTopic
 from src.utils.romanization import generate_all, resolve_effective
+from src.utils.card_overrides import apply_overrides, load_open_flag_targets, load_overrides, upsert_override
+from src.utils.current_user import current_user
 
 router = APIRouter(tags=["cards"])
 
@@ -62,7 +65,12 @@ def _parse_json_field(value: Optional[str], default):
         return default
 
 
-def _card_dict(card, include_analysis: bool = False):
+def _card_dict(
+    card,
+    include_analysis: bool = False,
+    overrides: Optional[dict] = None,
+    open_flags: Optional[list] = None,
+):
     d = {
         "id": card.id,
         "deck_id": card.deck_id,
@@ -92,6 +100,9 @@ def _card_dict(card, include_analysis: bool = False):
     }
     if include_analysis:
         d["script_analysis"] = _parse_json_field(card.script_analysis, [])
+    d = apply_overrides(d, overrides or {})
+    d["open_flag_targets"] = open_flags or []
+    d["has_open_flags"] = bool(open_flags)
     return d
 
 
@@ -102,15 +113,31 @@ async def list_cards(
     limit: int = Query(50, ge=1, le=200),
     tagged: Optional[bool] = Query(None, description="true=tagged only, false=untagged only"),
     translation_status: Optional[str] = Query(None, description="Filter by translation_status, e.g. 'flagged'"),
+    needs_attention: bool = Query(
+        False, description="Flagged translation status OR an open user flag of any target"
+    ),
     include_analysis: bool = Query(False, description="Include verbose per-syllable script_analysis in response"),
     db: AsyncSession = Depends(get_db),
 ):
-    if tagged is False or translation_status is not None:
+    if tagged is False or translation_status is not None or needs_attention:
         stmt = select(Card).where(Card.deck_id == deck_id)
         if tagged is False:
             stmt = stmt.where(not_(exists(select(CardTag.card_id).where(CardTag.card_id == Card.id))))
         if translation_status is not None:
             stmt = stmt.where(Card.translation_status == translation_status)
+        if needs_attention:
+            stmt = stmt.where(
+                or_(
+                    Card.translation_status == "flagged",
+                    exists(
+                        select(CardFlag.id).where(
+                            CardFlag.card_id == Card.id,
+                            CardFlag.user_id == current_user(),
+                            CardFlag.status == "open",
+                        )
+                    ),
+                )
+            )
         stmt = stmt.order_by(Card.created_at.desc()).offset(offset).limit(limit)
         result = await db.execute(stmt)
         cards = list(result.scalars().all())
@@ -138,9 +165,18 @@ async def list_cards(
         for row in topic_rows:
             topics_map[row.card_id].append({"id": row.topic_id, "name": row.topic_name})
 
+    user_id = current_user()
+    overrides_map = await load_overrides(db, card_ids, user_id)
+    flags_map = await load_open_flag_targets(db, card_ids, user_id)
+
     items = []
     for card in cards:
-        d = _card_dict(card, include_analysis=include_analysis)
+        d = _card_dict(
+            card,
+            include_analysis=include_analysis,
+            overrides=overrides_map.get(card.id),
+            open_flags=flags_map.get(card.id),
+        )
         d["tags"] = tags_map[card.id]
         d["topics"] = topics_map[card.id]
         items.append(d)
@@ -174,7 +210,16 @@ async def get_card_detail(card_id: int, db: AsyncSession = Depends(get_db)):
 
     links = await link_service.get_card_links(db, card_id)
 
-    d = _card_dict(card, include_analysis=True)
+    user_id = current_user()
+    overrides_map = await load_overrides(db, [card_id], user_id)
+    flags_map = await load_open_flag_targets(db, [card_id], user_id)
+
+    d = _card_dict(
+        card,
+        include_analysis=True,
+        overrides=overrides_map.get(card_id),
+        open_flags=flags_map.get(card_id),
+    )
     d["tags"] = tags
     d["topics"] = topics
     d["links"] = links
@@ -270,7 +315,10 @@ async def resolve_translation(
     payload: TranslationResolve,
     db: AsyncSession = Depends(get_db),
 ):
-    """User's verdict on a flagged translation: keep the material value, or correct it."""
+    """User's verdict on a flagged translation: keep the material value, or
+    correct it. 'correct' writes a translation override, not `cards.english`
+    — the material value stays the source-of-truth row; only this user's
+    display layer changes. See src/utils/card_overrides.py."""
     card = await card_service.get_card(db, card_id)
     if not card:
         raise HTTPException(404, "Card not found")
@@ -282,18 +330,62 @@ async def resolve_translation(
     elif payload.action == "correct":
         if not payload.english or not payload.english.strip():
             raise HTTPException(422, "english is required when action is 'correct'")
+        await upsert_override(
+            db, current_user(), card_id, "translation",
+            {"english": payload.english, "from_candidate": False},
+        )
         card = await card_service.update_card(
-            db,
-            card,
-            english=payload.english,
-            translation_status="confirmed",
-            translation_candidates=None,
+            db, card, translation_status="confirmed", translation_candidates=None
         )
     else:
         raise HTTPException(422, "action must be 'keep' or 'correct'")
 
     await db.commit()
-    return _card_dict(card)
+    overrides_map = await load_overrides(db, [card_id], current_user())
+    return _card_dict(card, overrides=overrides_map.get(card_id))
+
+
+@router.post("/cards/{card_id}/enrich-breakdown")
+async def enrich_breakdown(card_id: int, db: AsyncSession = Depends(get_db)):
+    """User-triggered: fill compound-gloss gaps left by the deterministic
+    ladder via a single Haiku call. No-op (and no LLM call) when the card
+    isn't a surfaced compound or every part already has a gloss."""
+    from src.db.services import compound_llm_service
+
+    card = await card_service.get_card(db, card_id)
+    if not card:
+        raise HTTPException(404, "Card not found")
+
+    try:
+        result = await compound_llm_service.enrich_breakdown(db, card_id)
+    except Exception as exc:
+        raise HTTPException(502, "Compound gloss enrichment failed") from exc
+
+    if result.get("status") == "enriched" and result.get("persisted"):
+        await db.commit()
+        card = await card_service.get_card(db, card_id)
+
+    overrides_map = await load_overrides(db, [card_id], current_user())
+    return {**result, "card": _card_dict(card, overrides=overrides_map.get(card_id))}
+
+
+@router.post("/cards/{card_id}/verify-translation")
+async def verify_translation(card_id: int, db: AsyncSession = Depends(get_db)):
+    """User-triggered: get a second opinion on a flagged translation via a
+    single Haiku call. Advisory only — never changes translation_status or
+    english. No-op (and no LLM call) unless the card is currently flagged."""
+    from src.db.services import translation_verify_service
+
+    card = await card_service.get_card(db, card_id)
+    if not card:
+        raise HTTPException(404, "Card not found")
+
+    try:
+        result = await translation_verify_service.verify_translation(db, card_id)
+    except Exception as exc:
+        raise HTTPException(502, "Translation verification failed") from exc
+
+    return result
 
 
 @router.delete("/cards/{card_id}", status_code=204)
