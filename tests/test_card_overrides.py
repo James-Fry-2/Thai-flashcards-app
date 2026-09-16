@@ -17,6 +17,7 @@ from src.utils.card_overrides import (
     apply_overrides,
     load_overrides,
     load_open_flag_targets,
+    upsert_flag,
     upsert_override,
     delete_override,
 )
@@ -185,3 +186,50 @@ class TestLoadOpenFlagTargets:
 
         result = await load_open_flag_targets(db, [card.id], user_id=1)
         assert result[card.id] == ["translation"]
+
+
+class TestUpsertFlag:
+    @pytest.mark.asyncio
+    async def test_creates_open_flag(self, db):
+        card = await _make_card(db)
+        flag = await upsert_flag(db, 1, card.id, "compound", "looks wrong", '{"a": 1}')
+        await db.commit()
+
+        assert flag.status == "open"
+        assert flag.note == "looks wrong"
+        assert flag.flagged_value == '{"a": 1}'
+
+        result = await load_open_flag_targets(db, [card.id], user_id=1)
+        assert result[card.id] == ["compound"]
+
+    @pytest.mark.asyncio
+    async def test_refiling_while_open_updates_in_place_not_duplicate(self, db):
+        card = await _make_card(db)
+        await upsert_flag(db, 1, card.id, "compound", "first note", None)
+        await upsert_flag(db, 1, card.id, "compound", "second note", '{"b": 2}')
+        await db.commit()
+
+        from sqlalchemy import select, func
+        count = await db.scalar(select(func.count()).select_from(CardFlag))
+        assert count == 1
+
+        result = await db.scalar(select(CardFlag).where(CardFlag.card_id == card.id))
+        assert result.note == "second note"
+        assert result.flagged_value == '{"b": 2}'
+
+    @pytest.mark.asyncio
+    async def test_new_row_created_after_prior_flag_resolved(self, db):
+        """A resolved flag isn't 'open' any more, so a fresh upsert must not
+        touch it — it should open a new row instead of resurrecting the old
+        one silently."""
+        card = await _make_card(db)
+        first = await upsert_flag(db, 1, card.id, "compound", "first", None)
+        first.status = "resolved"
+        await db.commit()
+
+        await upsert_flag(db, 1, card.id, "compound", "second", None)
+        await db.commit()
+
+        from sqlalchemy import select, func
+        count = await db.scalar(select(func.count()).select_from(CardFlag))
+        assert count == 2

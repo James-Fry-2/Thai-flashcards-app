@@ -10,6 +10,7 @@ import TopicsPage from './pages/TopicsPage'
 import AtRiskPage from './pages/AtRiskPage'
 import SearchPage from './pages/SearchPage'
 import SettingsPage from './pages/SettingsPage'
+import TriagePage from './pages/TriagePage'
 import SplitReviewPage from './pages/SplitReviewPage'
 import BookChaptersPage from './pages/BookChaptersPage'
 import BooksPage from './pages/BooksPage'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/search/review" element={<ReviewPage />} />
         <Route path="/insights/review" element={<ReviewPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/triage" element={<TriagePage />} />
       </Route>
     </Routes>
   )

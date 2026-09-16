@@ -620,6 +620,103 @@ class TestParseCompoundBreakdownResponse:
         assert confidence is None
 
 
+class TestParseCompoundBreakdownReviewResponse:
+
+    def test_fills_gaps_same_as_fill_mode(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [
+            {"thai": "เสื้อ", "romanization": "seua", "gloss": "shirt", "gloss_source": "lexicon"},
+            {"thai": "คลุม", "romanization": "khlum", "gloss": None, "gloss_source": None},
+        ]
+        raw = '{"glosses": {"คลุม": "cover"}, "corrections": {}, "confidence": "high"}'
+        updated, corrections, confidence = parse_compound_breakdown_review_response(raw, parts)
+
+        assert confidence == "high"
+        khlum = next(p for p in updated if p["thai"] == "คลุม")
+        assert khlum["gloss"] == "cover"
+        assert khlum["gloss_source"] == "llm"
+        assert corrections == []
+
+    def test_correction_on_glossed_part_is_returned_but_not_merged(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [
+            {"thai": "รัก", "romanization": "rak", "gloss": "Calotropis gigantea", "gloss_source": "volubilis"},
+        ]
+        raw = (
+            '{"glosses": {}, "corrections": '
+            '{"รัก": {"suggested": "love", "reason": "rare botanical sense"}}, '
+            '"confidence": "high"}'
+        )
+        updated, corrections, confidence = parse_compound_breakdown_review_response(raw, parts)
+
+        # Advisory only — the returned parts list keeps the original gloss;
+        # the caller must apply a correction explicitly via the override endpoint.
+        assert updated[0]["gloss"] == "Calotropis gigantea"
+        assert corrections == [
+            {
+                "thai": "รัก",
+                "current_gloss": "Calotropis gigantea",
+                "suggested_gloss": "love",
+                "reason": "rare botanical sense",
+            }
+        ]
+        assert confidence == "high"
+
+    def test_correction_on_ungossed_part_is_dropped(self):
+        """A part with no existing gloss has nothing to 'correct' — only
+        'glosses' can add to it. A stray corrections entry for it is ignored."""
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [{"thai": "ก", "romanization": None, "gloss": None, "gloss_source": None}]
+        raw = '{"glosses": {}, "corrections": {"ก": {"suggested": "thing"}}, "confidence": "low"}'
+        _, corrections, _ = parse_compound_breakdown_review_response(raw, parts)
+
+        assert corrections == []
+
+    def test_correction_identical_to_current_gloss_is_dropped(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [{"thai": "รัก", "romanization": None, "gloss": "love", "gloss_source": "lexicon"}]
+        raw = '{"glosses": {}, "corrections": {"รัก": {"suggested": "love"}}, "confidence": "high"}'
+        _, corrections, _ = parse_compound_breakdown_review_response(raw, parts)
+
+        assert corrections == []
+
+    def test_correction_missing_reason_is_optional(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [{"thai": "รัก", "romanization": None, "gloss": "love", "gloss_source": "lexicon"}]
+        raw = '{"glosses": {}, "corrections": {"รัก": {"suggested": "cherish"}}, "confidence": "medium"}'
+        _, corrections, _ = parse_compound_breakdown_review_response(raw, parts)
+
+        assert corrections == [
+            {"thai": "รัก", "current_gloss": "love", "suggested_gloss": "cherish", "reason": None}
+        ]
+
+    def test_unknown_part_in_corrections_is_ignored(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [{"thai": "รัก", "romanization": None, "gloss": "love", "gloss_source": "lexicon"}]
+        raw = '{"glosses": {}, "corrections": {"ไม่มี": {"suggested": "x"}}, "confidence": "high"}'
+        _, corrections, _ = parse_compound_breakdown_review_response(raw, parts)
+
+        assert corrections == []
+
+    def test_malformed_json_returns_parts_unchanged_no_corrections(self):
+        from src.llm.prompts.compound_breakdown import parse_compound_breakdown_review_response
+
+        parts = [{"thai": "ก", "romanization": None, "gloss": "thing", "gloss_source": "lexicon"}]
+        updated, corrections, confidence = parse_compound_breakdown_review_response(
+            "not json {{{", parts
+        )
+
+        assert updated == parts
+        assert corrections == []
+        assert confidence is None
+
+
 # ---------------------------------------------------------------------------
 # compound_llm_service.enrich_breakdown — the cost-guard short-circuit and
 # the not_compound early-exits must never construct a provider (no network
@@ -915,3 +1012,293 @@ class TestEnrichBreakdownService:
         assert result["filled"] == []
         assert result["persisted"] is False
         assert card.compound_breakdown is None  # never written — nothing changed
+
+
+# ---------------------------------------------------------------------------
+# compound_llm_service.review_breakdown — unlike enrich_breakdown, this must
+# call the provider even when every part is already glossed (that's the
+# point), and must NEVER write to card.compound_breakdown itself — advisory
+# only, applied by the caller through the override endpoint.
+# ---------------------------------------------------------------------------
+
+class TestReviewBreakdownService:
+
+    def _make_card(self, is_compound=True, compound_breakdown=None):
+        card = MagicMock()
+        card.is_compound = is_compound
+        card.compound_breakdown = compound_breakdown
+        card.thai = "เสื้อคลุม"
+        card.romanization = "seua khlum"
+        card.english = "overcoat"
+        return card
+
+    @pytest.mark.asyncio
+    async def test_not_compound_card_returns_early_without_provider(self):
+        from src.db.services import compound_llm_service
+
+        card = self._make_card(is_compound=False, compound_breakdown=None)
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        with patch("src.db.services.compound_llm_service.get_provider") as mock_get_provider:
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result == {"status": "not_compound"}
+        mock_get_provider.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_card_not_found_returns_not_compound(self):
+        from src.db.services import compound_llm_service
+
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=None)
+
+        with patch("src.db.services.compound_llm_service.get_provider") as mock_get_provider:
+            result = await compound_llm_service.review_breakdown(mock_db, 999)
+
+        assert result == {"status": "not_compound"}
+        mock_get_provider.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_fully_glossed_breakdown_still_calls_provider(self):
+        """The cost-guard short-circuit in enrich_breakdown does NOT apply
+        here — a fully-glossed breakdown is exactly the case review is for."""
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "เสื้อ", "romanization": "seua", "gloss": "shirt", "gloss_source": "lexicon"},
+            {"thai": "คลุม", "romanization": "khlum", "gloss": "cover", "gloss_source": "lexicon"},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text='{"glosses": {}, "corrections": {}, "confidence": "high"}',
+            input_tokens=200,
+            output_tokens=10,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider) as mock_get_provider:
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        mock_get_provider.assert_called_once()
+        assert result["status"] == "reviewed"
+        assert result["filled"] == []
+        assert result["corrections"] == []
+
+    @pytest.mark.asyncio
+    async def test_correction_surfaces_but_never_persists(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "รัก", "romanization": "rak", "gloss": "Calotropis gigantea", "gloss_source": "volubilis"},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        card.thai = "น่ารัก"
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text=(
+                '{"glosses": {}, "corrections": '
+                '{"รัก": {"suggested": "love", "reason": "botanical sense doesn\'t fit"}}, '
+                '"confidence": "high"}'
+            ),
+            input_tokens=200,
+            output_tokens=15,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        original_breakdown = card.compound_breakdown
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider):
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result["status"] == "reviewed"
+        assert result["corrections"] == [
+            {
+                "thai": "รัก",
+                "current_gloss": "Calotropis gigantea",
+                "suggested_gloss": "love",
+                "reason": "botanical sense doesn't fit",
+            }
+        ]
+        # Advisory only — the row is completely untouched
+        assert card.compound_breakdown == original_breakdown
+
+    @pytest.mark.asyncio
+    async def test_gap_and_correction_in_same_pass(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "เสื้อ", "romanization": "seua", "gloss": "shirt", "gloss_source": "lexicon"},
+            {"thai": "คลุม", "romanization": "khlum", "gloss": None, "gloss_source": None},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text=(
+                '{"glosses": {"คลุม": "cover"}, "corrections": '
+                '{"เสื้อ": {"suggested": "clothing", "reason": "broader sense fits better"}}, '
+                '"confidence": "medium"}'
+            ),
+            input_tokens=220,
+            output_tokens=18,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        original_breakdown = card.compound_breakdown
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider):
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result["filled"] == ["คลุม"]
+        assert [c["thai"] for c in result["corrections"]] == ["เสื้อ"]
+        khlum = next(p for p in result["parts"] if p["thai"] == "คลุม")
+        assert khlum["gloss"] == "cover"
+        seua = next(p for p in result["parts"] if p["thai"] == "เสื้อ")
+        assert seua["gloss"] == "shirt"  # correction not merged into parts
+        assert card.compound_breakdown == original_breakdown  # nothing persisted
+
+    @pytest.mark.asyncio
+    async def test_unsurfaced_compound_recomputes_segmentation(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+
+        card = self._make_card(is_compound=True, compound_breakdown=None)
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        resolved_parts = [
+            {"thai": "เสื้อ", "romanization": "seua", "gloss": "shirt", "gloss_source": "lexicon"},
+            {"thai": "คลุม", "romanization": "khlum", "gloss": None, "gloss_source": None},
+        ]
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text='{"glosses": {"คลุม": "cover"}, "corrections": {}, "confidence": "medium"}',
+            input_tokens=200,
+            output_tokens=12,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        with patch("src.db.services.compound_llm_service.decompose", return_value=["เสื้อ", "คลุม"]) as mock_decompose, \
+             patch("src.db.services.compound_llm_service.resolve_glosses", new=AsyncMock(return_value=resolved_parts)) as mock_resolve, \
+             patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider):
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        mock_decompose.assert_called_once_with(card.thai)
+        mock_resolve.assert_awaited_once_with(mock_db, ["เสื้อ", "คลุม"])
+        assert result["status"] == "reviewed"
+        assert result["filled"] == ["คลุม"]
+        assert card.compound_breakdown is None  # review never writes
+
+    # -----------------------------------------------------------------
+    # Auto-flagging — a confident correction should open a
+    # CardFlag(target='compound') so the card surfaces under
+    # needs_attention; a low-confidence one should not add flag noise.
+    # -----------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_high_confidence_correction_opens_flag(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "รัก", "romanization": "rak", "gloss": "Calotropis gigantea", "gloss_source": "volubilis"},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        card.thai = "น่ารัก"
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text='{"glosses": {}, "corrections": {"รัก": {"suggested": "love", "reason": "wrong sense"}}, "confidence": "high"}',
+            input_tokens=200,
+            output_tokens=15,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider), \
+             patch("src.db.services.compound_llm_service.upsert_flag", new=AsyncMock()) as mock_upsert_flag, \
+             patch("src.db.services.compound_llm_service.current_user", return_value=1):
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result["flagged"] is True
+        mock_upsert_flag.assert_awaited_once()
+        call_args = mock_upsert_flag.await_args.args
+        assert call_args[:3] == (mock_db, 1, 1)  # db, user_id, card_id
+        assert call_args[3] == "compound"  # target
+        assert "รัก" in call_args[4]  # note mentions the flagged part
+
+    @pytest.mark.asyncio
+    async def test_low_confidence_correction_does_not_open_flag(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "ลำ", "romanization": None, "gloss": "[classifier]", "gloss_source": "lexicon"},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        card.thai = "ลำไย"
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text='{"glosses": {}, "corrections": {"ลำ": {"suggested": "stem"}}, "confidence": "low"}',
+            input_tokens=200,
+            output_tokens=15,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider), \
+             patch("src.db.services.compound_llm_service.upsert_flag", new=AsyncMock()) as mock_upsert_flag:
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result["flagged"] is False
+        assert result["corrections"]  # still surfaced for display
+        mock_upsert_flag.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_no_corrections_does_not_open_flag(self):
+        from src.db.services import compound_llm_service
+        from src.llm.base import LLMResponse
+        import json as json_mod
+
+        parts = [
+            {"thai": "เสื้อ", "romanization": "seua", "gloss": "shirt", "gloss_source": "lexicon"},
+            {"thai": "คลุม", "romanization": "khlum", "gloss": "cover", "gloss_source": "lexicon"},
+        ]
+        card = self._make_card(is_compound=True, compound_breakdown=json_mod.dumps(parts, ensure_ascii=False))
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=card)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=LLMResponse(
+            text='{"glosses": {}, "corrections": {}, "confidence": "high"}',
+            input_tokens=200,
+            output_tokens=10,
+            model="claude-haiku-4-5-20251001",
+        ))
+
+        with patch("src.db.services.compound_llm_service.get_provider", return_value=mock_provider), \
+             patch("src.db.services.compound_llm_service.upsert_flag", new=AsyncMock()) as mock_upsert_flag:
+            result = await compound_llm_service.review_breakdown(mock_db, 1)
+
+        assert result["flagged"] is False
+        mock_upsert_flag.assert_not_awaited()

@@ -109,6 +109,40 @@ def apply_overrides(card_dict: dict, overrides: dict[str, dict]) -> dict:
     return d
 
 
+async def upsert_flag(
+    db: AsyncSession,
+    user_id: int,
+    card_id: int,
+    target: str,
+    note: str | None,
+    flagged_value: str | None = None,
+) -> CardFlag:
+    """Upsert the open (user_id, card_id, target) flag — refiling while one is
+    already open updates it in place (note, flagged_value) rather than piling
+    up duplicate rows. Caller commits. Shared by the manual /flags route and
+    any system-filed flag (e.g. compound_llm_service.review_breakdown)."""
+    existing = await db.scalar(
+        select(CardFlag).where(
+            CardFlag.user_id == user_id,
+            CardFlag.card_id == card_id,
+            CardFlag.target == target,
+            CardFlag.status == "open",
+        )
+    )
+    if existing:
+        existing.note = note
+        existing.flagged_value = flagged_value
+        flag = existing
+    else:
+        flag = CardFlag(
+            user_id=user_id, card_id=card_id, target=target, note=note,
+            flagged_value=flagged_value, status="open",
+        )
+        db.add(flag)
+    await db.flush()
+    return flag
+
+
 async def upsert_override(
     db: AsyncSession, user_id: int, card_id: int, target: str, payload: dict
 ) -> CardOverride:

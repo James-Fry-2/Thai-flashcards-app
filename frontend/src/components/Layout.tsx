@@ -1,8 +1,9 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks, Shuffle } from 'lucide-react'
+import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks, Shuffle, ClipboardCheck } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useActiveUploads } from '../hooks/useActiveUploads'
+import { useTriageQueue } from '../hooks/useTriageQueue'
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -11,6 +12,10 @@ export default function Layout() {
   const processingCount = activeUploads.filter(
     (u) => u.status === 'pending' || u.status === 'processing'
   ).length
+  const { data: triageQueue } = useTriageQueue()
+  const triageCount = triageQueue
+    ? triageQueue.counts.translation + triageQueue.counts.compound_gap + triageQueue.counts.open_flags
+    : 0
 
   const onSearchPage = location.pathname === '/search'
   const urlQ = onSearchPage ? new URLSearchParams(location.search).get('q') ?? '' : ''
@@ -68,6 +73,7 @@ export default function Layout() {
           <NavItem to="/at-risk" icon={<AlertTriangle size={16} />} label="At-risk" />
           <NavItem to="/quiz" icon={<ListChecks size={16} />} label="Quiz" />
           <NavItem to="/practice" icon={<Shuffle size={16} />} label="Practice" />
+          <NavItem to="/triage" icon={<ClipboardCheck size={16} />} label="Triage" badge={triageCount} />
           <NavItem to="/books" icon={<BookOpen size={16} />} label="Books" />
           <NavItem to="/upload" icon={<Upload size={16} />} label="Upload" />
           <NavItem to="/settings" icon={<Settings size={16} />} label="Settings" />
@@ -101,7 +107,7 @@ export default function Layout() {
   )
 }
 
-function NavItem({ to, icon, label }: { to: string; icon: ReactNode; label: string }) {
+function NavItem({ to, icon, label, badge }: { to: string; icon: ReactNode; label: string; badge?: number }) {
   return (
     <NavLink
       to={to}
@@ -116,6 +122,11 @@ function NavItem({ to, icon, label }: { to: string; icon: ReactNode; label: stri
     >
       {icon}
       {label}
+      {!!badge && (
+        <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-700 leading-none">
+          {badge}
+        </span>
+      )}
     </NavLink>
   )
 }

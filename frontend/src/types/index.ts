@@ -124,6 +124,24 @@ export interface EnrichBreakdownResponse {
   card?: CardDetail
 }
 
+export interface CompoundCorrection {
+  thai: string
+  current_gloss: string
+  suggested_gloss: string
+  reason?: string | null
+}
+
+export interface ReviewBreakdownResponse {
+  status: 'not_compound' | 'reviewed'
+  parts?: CompoundPart[]
+  confidence?: 'high' | 'medium' | 'low' | null
+  filled?: string[]
+  corrections?: CompoundCorrection[]
+  // true when a confident correction opened a CardFlag(target='compound')
+  // on this card, so it now shows up under the needs_attention filter.
+  flagged?: boolean
+}
+
 export interface VerifyTranslationResponse {
   status: 'not_flagged' | 'checked'
   verdict?: 'likely_error' | 'likely_ok' | 'unsure' | null
@@ -530,4 +548,132 @@ export interface AtRiskCard {
   last_reviewed: string | null
   days_overdue: number | null
   direction: string
+}
+
+// ---------------------------------------------------------------------------
+// Triage — card_correction_event log + the triage queue/decisions API
+// ---------------------------------------------------------------------------
+
+export type CorrectionTarget = 'translation' | 'compound' | 'romanization' | 'other'
+export type CorrectionAction =
+  | 'keep'
+  | 'correct'
+  | 'edit_gloss'
+  | 'suppress'
+  | 'llm_fill'
+  | 'dismiss_flag'
+  | 'undo'
+export type CorrectionSource = 'triage' | 'drawer'
+export type AiVerdict = 'likely_error' | 'likely_ok' | 'unsure'
+
+export interface TriageTranslationItem {
+  card_id: number
+  thai: string
+  romanization: string | null
+  english: string
+  translation_candidates: string[]
+  source_title: string | null
+  chapter_label: string | null
+}
+
+export interface TriageCompoundGapItem {
+  card_id: number
+  thai: string
+  english: string
+  parts: CompoundPart[]
+  missing_parts: string[]
+}
+
+export interface TriageOpenFlagItem {
+  flag_id: number
+  card_id: number
+  target: CorrectionTarget
+  note: string | null
+  flagged_value: Record<string, unknown> | null
+  card: { id: number; thai: string; english: string } | null
+}
+
+export interface TriageSuggestedItem {
+  card_id: number
+  target: CorrectionTarget
+  event_id: number
+  from_value: Record<string, unknown> | null
+  to_value: Record<string, unknown> | null
+  card: { id: number; thai: string; english: string }
+}
+
+export interface TriageQueueResponse {
+  groups: {
+    translation: TriageTranslationItem[]
+    compound_gap: TriageCompoundGapItem[]
+    open_flags: TriageOpenFlagItem[]
+    suggested: TriageSuggestedItem[]
+  }
+  counts: {
+    translation: number
+    compound_gap: number
+    open_flags: number
+    suggested: number
+  }
+}
+
+export interface TriageVerifyResultItem {
+  card_id: number
+  status: 'not_flagged' | 'checked' | 'error'
+  verdict?: AiVerdict | null
+  reason?: string | null
+  error?: string
+}
+
+export interface TriageEnrichResultItem {
+  card_id: number
+  // 'low_confidence': the LLM proposed a fill but enrich_breakdown()'s own
+  // confidence guard declined to write it — nothing changed on the card.
+  status: 'not_compound' | 'no_gaps' | 'low_confidence' | 'enriched' | 'error'
+  event_id?: number
+  parts?: CompoundPart[]
+  error?: string
+}
+
+export interface TriageDecision {
+  card_id: number
+  target: CorrectionTarget
+  action: CorrectionAction
+  payload?: Record<string, unknown>
+  ai_verdict?: AiVerdict | null
+  ai_reason?: string | null
+  applied_from_event_id?: number
+}
+
+export interface TriageDecisionResultEvent {
+  event_id: number
+  card_id: number | null
+  propagation_candidates: number[]
+}
+
+export interface TriageDecisionsResponse {
+  batch_id: string | null
+  events: TriageDecisionResultEvent[]
+}
+
+export interface TriageUndoResponse {
+  reverted: (number | null)[]
+  skipped: number[]
+}
+
+export interface CorrectionEvent {
+  id: number
+  card_id: number | null
+  thai_key: string
+  target: CorrectionTarget
+  action: CorrectionAction
+  from_value: Record<string, unknown> | null
+  to_value: Record<string, unknown> | null
+  ai_verdict: AiVerdict | null
+  ai_reason: string | null
+  source: CorrectionSource
+  batch_id: string | null
+  applied_from_event_id: number | null
+  reverts_event_id: number | null
+  created_at: string
 }

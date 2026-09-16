@@ -13,7 +13,9 @@ import type {
   TranslationCandidates,
   CompoundCandidates,
   EnrichBreakdownResponse,
+  ReviewBreakdownResponse,
   VerifyTranslationResponse,
+  CorrectionEvent,
 } from '../types'
 import CompoundBreakdown from './CompoundBreakdown'
 
@@ -21,6 +23,16 @@ interface Props {
   cardId: number | null
   deckId?: number
   onClose: () => void
+}
+
+const ACTION_LABEL: Record<string, string> = {
+  keep: 'kept',
+  correct: 'corrected',
+  edit_gloss: 'gloss edited',
+  suppress: 'marked not a compound',
+  llm_fill: 'filled with AI',
+  dismiss_flag: 'flag dismissed',
+  undo: 'undone',
 }
 
 export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClose }: Props) {
@@ -48,6 +60,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
   const invalidate = () => {
     qc.invalidateQueries(['card', cardId])
     qc.invalidateQueries(['open-flags', cardId])
+    qc.invalidateQueries(['corrections', cardId])
     if (deckId !== undefined) qc.invalidateQueries(['cards', deckId])
   }
 
@@ -67,6 +80,15 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
         .then((r) => (r.data.items as FlagListItem[]).filter((f) => f.card_id === cardId)),
     { enabled: cardId !== null && !!card?.has_open_flags }
   )
+
+  // Read-only history line — no UI here writes to card_correction_event;
+  // triage.py's decisions/undo routes are the only writers.
+  const { data: correctionHistory = [] } = useQuery<CorrectionEvent[]>(
+    ['corrections', cardId],
+    () => api.get('/corrections', { params: { card_id: cardId, limit: 1 } }).then((r) => r.data.items),
+    { enabled: cardId !== null }
+  )
+  const lastCorrection = correctionHistory[0]
 
   const { data: translationCandidates } = useQuery<TranslationCandidates>(
     ['translation-candidates', cardId],
@@ -123,11 +145,30 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
     }
   )
 
+  const reviewBreakdown = useMutation<ReviewBreakdownResponse>(
+    () => api.post(`/cards/${cardId}/review-breakdown`).then((r) => r.data),
+    {
+      onSuccess: (result) => {
+        if (result.status !== 'reviewed') return
+        const hasSuggestions =
+          (result.filled?.length ?? 0) > 0 || (result.corrections?.length ?? 0) > 0
+        if (!hasSuggestions) {
+          toast.success('No issues found')
+        } else if (result.flagged) {
+          // A confident correction opened a CardFlag — refresh has_open_flags
+          // / open-flags so the banner and needs_attention list pick it up.
+          invalidate()
+        }
+      },
+    }
+  )
+
   // Advisory results are per-card; drop them when navigating to another card
   // so a stale verdict/confidence from the previous card can't linger.
   useEffect(() => {
     verifyTranslation.reset()
     enrichBreakdown.reset()
+    reviewBreakdown.reset()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId])
 
@@ -140,6 +181,36 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
     (enrichBreakdown.data.filled?.length ?? 0) > 0
       ? enrichBreakdown.data
       : undefined
+
+  // Review suggestions are always advisory (never persisted by the endpoint
+  // itself) — surface them until the user applies or dismisses them.
+  const reviewSuggestions =
+    reviewBreakdown.data?.status === 'reviewed' &&
+    ((reviewBreakdown.data.filled?.length ?? 0) > 0 ||
+      (reviewBreakdown.data.corrections?.length ?? 0) > 0)
+      ? reviewBreakdown.data
+      : undefined
+
+  function applyReviewCorrection(thai: string, suggestedGloss: string) {
+    if (!reviewBreakdown.data?.parts) return
+    const parts = reviewBreakdown.data.parts.map((p) =>
+      p.thai === thai ? { ...p, gloss: suggestedGloss, gloss_source: 'llm' as const } : p
+    )
+    putCompoundOverride.mutate({ parts })
+  }
+
+  function applyAllReviewSuggestions() {
+    if (!reviewBreakdown.data?.parts) return
+    const correctionMap = new Map(
+      (reviewBreakdown.data.corrections ?? []).map((c) => [c.thai, c.suggested_gloss])
+    )
+    const parts = reviewBreakdown.data.parts.map((p) =>
+      correctionMap.has(p.thai)
+        ? { ...p, gloss: correctionMap.get(p.thai)!, gloss_source: 'llm' as const }
+        : p
+    )
+    putCompoundOverride.mutate({ parts })
+  }
 
   const deleteOverride = useMutation(
     (target: 'translation' | 'compound') => api.delete(`/cards/${cardId}/overrides/${target}`),
@@ -158,6 +229,8 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
       onSuccess: () => {
         invalidate()
         setCompoundCorrectionOpen(false)
+        enrichBreakdown.reset()
+        reviewBreakdown.reset()
         toast.success('Breakdown updated')
       },
     }
@@ -241,6 +314,12 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                   <p className="text-sm text-gray-500 mt-0.5">{card.english}</p>
                   {card.romanization && (
                     <p className="text-xs text-gray-400 mt-0.5">{card.romanization}</p>
+                  )}
+                  {lastCorrection && (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Last changed: {ACTION_LABEL[lastCorrection.action] ?? lastCorrection.action} on{' '}
+                      {new Date(lastCorrection.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </p>
                   )}
                 </>
               ) : (
@@ -404,6 +483,13 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                     enrichBreakdown.reset()
                     putCompoundOverride.mutate({ suppressed: true })
                   }}
+                  onReview={() => reviewBreakdown.mutate()}
+                  isReviewing={reviewBreakdown.isLoading}
+                  reviewSuggestions={reviewSuggestions}
+                  onDismissReview={() => reviewBreakdown.reset()}
+                  onApplyReviewCorrection={applyReviewCorrection}
+                  onApplyAllReviewSuggestions={applyAllReviewSuggestions}
+                  isApplyingReview={putCompoundOverride.isLoading}
                 />
               )}
 
@@ -982,6 +1068,13 @@ function BreakdownSection({
   unsavedFill,
   onDismissFill,
   onSuppressUnsavedFill,
+  onReview,
+  isReviewing,
+  reviewSuggestions,
+  onDismissReview,
+  onApplyReviewCorrection,
+  onApplyAllReviewSuggestions,
+  isApplyingReview,
 }: {
   parts: CompoundPart[]
   suppressed: boolean
@@ -1001,6 +1094,13 @@ function BreakdownSection({
   unsavedFill?: EnrichBreakdownResponse
   onDismissFill: () => void
   onSuppressUnsavedFill: () => void
+  onReview: () => void
+  isReviewing: boolean
+  reviewSuggestions?: ReviewBreakdownResponse
+  onDismissReview: () => void
+  onApplyReviewCorrection: (thai: string, suggestedGloss: string) => void
+  onApplyAllReviewSuggestions: () => void
+  isApplyingReview: boolean
 }) {
   // Available on every compound card, not just ones with a stored gap — a
   // card whose breakdown never surfaced (compound_surface_min_gloss_ratio
@@ -1008,6 +1108,7 @@ function BreakdownSection({
   // segmentation for those on demand. A suppressed card is excluded: the
   // user has already said it isn't a compound, so there's nothing to fill.
   const showFillGaps = !suppressed
+  const showReview = !suppressed
 
   return (
     <section>
@@ -1047,14 +1148,28 @@ function BreakdownSection({
         </p>
       )}
 
-      {showFillGaps && !unsavedFill && (
-        <button
-          onClick={onFillGaps}
-          disabled={isFillingGaps}
-          className="mt-2 flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
-        >
-          <Sparkles size={11} /> {isFillingGaps ? 'Filling…' : 'Fill gaps with AI'}
-        </button>
+      {(showFillGaps || showReview) && (
+        <div className="mt-2 flex items-center gap-3">
+          {showFillGaps && !unsavedFill && (
+            <button
+              onClick={onFillGaps}
+              disabled={isFillingGaps}
+              className="flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
+            >
+              <Sparkles size={11} /> {isFillingGaps ? 'Filling…' : 'Fill gaps with AI'}
+            </button>
+          )}
+          {showReview && !reviewSuggestions && (
+            <button
+              onClick={onReview}
+              disabled={isReviewing}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium disabled:opacity-50"
+              title="Ask the AI to check every gloss, not just fill missing ones"
+            >
+              <Check size={11} /> {isReviewing ? 'Reviewing…' : 'Review with AI'}
+            </button>
+          )}
+        </div>
       )}
 
       {unsavedFill && (
@@ -1091,6 +1206,74 @@ function BreakdownSection({
               className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors"
             >
               Suppress as not-a-compound
+            </button>
+          </div>
+        </div>
+      )}
+
+      {reviewSuggestions && (
+        <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+              AI review
+            </p>
+            {reviewSuggestions.flagged && (
+              <span className="flex items-center gap-0.5 text-[10px] text-amber-700">
+                <Flag size={9} /> flagged for review
+              </span>
+            )}
+          </div>
+
+          {(reviewSuggestions.corrections?.length ?? 0) > 0 && (
+            <div className="space-y-2 mb-2">
+              {reviewSuggestions.corrections!.map((c) => (
+                <div key={c.thai} className="text-xs">
+                  <p className="text-gray-700">
+                    <span className="thai font-medium">{c.thai}</span>: "{c.current_gloss}" →{' '}
+                    <span className="font-medium text-brand-700">"{c.suggested_gloss}"</span>
+                  </p>
+                  {c.reason && <p className="text-gray-400 italic mt-0.5">{c.reason}</p>}
+                  <button
+                    onClick={() => onApplyReviewCorrection(c.thai, c.suggested_gloss)}
+                    disabled={isApplyingReview}
+                    className="mt-1 text-brand-600 hover:text-brand-800 font-medium disabled:opacity-50"
+                  >
+                    Apply this fix
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(reviewSuggestions.filled?.length ?? 0) > 0 && (
+            <div className="space-y-1 mb-2">
+              {reviewSuggestions.filled!.map((thai) => {
+                const part = reviewSuggestions.parts?.find((p) => p.thai === thai)
+                return (
+                  <p key={thai} className="text-xs text-gray-600">
+                    <span className="thai font-medium">{thai}</span>
+                    {' → '}
+                    <span className="italic">{part?.gloss ?? '?'}</span>{' '}
+                    <span className="text-gray-400">(gap filled)</span>
+                  </p>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={onDismissReview}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={onApplyAllReviewSuggestions}
+              disabled={isApplyingReview}
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
+            >
+              Apply all
             </button>
           </div>
         </div>

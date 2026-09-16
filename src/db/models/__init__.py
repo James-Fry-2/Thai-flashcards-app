@@ -17,6 +17,7 @@ from .lexicon import Lexicon
 from .practice import PracticeSession, PracticeAttempt, PracticeOptionLog
 from .card_flag import CardFlag
 from .card_override import CardOverride
+from .card_correction_event import CardCorrectionEvent
 
 __all__ = [
     "Base",
@@ -46,4 +47,5 @@ __all__ = [
     "PracticeOptionLog",
     "CardFlag",
     "CardOverride",
+    "CardCorrectionEvent",
 ]

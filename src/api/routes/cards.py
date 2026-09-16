@@ -16,7 +16,7 @@ from src.db.models.card_flag import CardFlag
 from src.db.models.tag import Tag, CardTag
 from src.db.models.topic import Topic, CardTopic
 from src.utils.romanization import generate_all, resolve_effective
-from src.utils.card_overrides import apply_overrides, load_open_flag_targets, load_overrides, upsert_override
+from src.utils.card_overrides import apply_overrides, load_open_flag_targets, load_overrides
 from src.utils.current_user import current_user
 
 router = APIRouter(tags=["cards"])
@@ -318,27 +318,30 @@ async def resolve_translation(
     """User's verdict on a flagged translation: keep the material value, or
     correct it. 'correct' writes a translation override, not `cards.english`
     — the material value stays the source-of-truth row; only this user's
-    display layer changes. See src/utils/card_overrides.py."""
+    display layer changes. Goes through correction_service.apply_decision()
+    so this write is also logged to card_correction_event."""
+    from src.db.services import correction_service
+
     card = await card_service.get_card(db, card_id)
     if not card:
         raise HTTPException(404, "Card not found")
 
     if payload.action == "keep":
-        card = await card_service.update_card(
-            db, card, translation_status="confirmed", translation_candidates=None
-        )
+        decision = {"card_id": card_id, "target": "translation", "action": "keep"}
     elif payload.action == "correct":
         if not payload.english or not payload.english.strip():
             raise HTTPException(422, "english is required when action is 'correct'")
-        await upsert_override(
-            db, current_user(), card_id, "translation",
-            {"english": payload.english, "from_candidate": False},
-        )
-        card = await card_service.update_card(
-            db, card, translation_status="confirmed", translation_candidates=None
-        )
+        decision = {
+            "card_id": card_id, "target": "translation", "action": "correct",
+            "payload": {"english": payload.english, "from_candidate": False},
+        }
     else:
         raise HTTPException(422, "action must be 'keep' or 'correct'")
+
+    try:
+        await correction_service.apply_decision(db, current_user(), decision, source="drawer")
+    except correction_service.CorrectionError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
     await db.commit()
     overrides_map = await load_overrides(db, [card_id], current_user())
@@ -367,6 +370,32 @@ async def enrich_breakdown(card_id: int, db: AsyncSession = Depends(get_db)):
 
     overrides_map = await load_overrides(db, [card_id], current_user())
     return {**result, "card": _card_dict(card, overrides=overrides_map.get(card_id))}
+
+
+@router.post("/cards/{card_id}/review-breakdown")
+async def review_breakdown(card_id: int, db: AsyncSession = Depends(get_db)):
+    """User-triggered: ask the LLM to flag existing compound-gloss parts that
+    look wrong for this word (not just fill gaps), via a single Haiku call.
+    The gloss value itself is advisory only — never written to
+    compound_breakdown; the user applies any suggestion they accept via PUT
+    /cards/{card_id}/overrides/compound. A confident finding does open a
+    CardFlag(target='compound') so the card surfaces under needs_attention
+    (see compound_llm_service.review_breakdown)."""
+    from src.db.services import compound_llm_service
+
+    card = await card_service.get_card(db, card_id)
+    if not card:
+        raise HTTPException(404, "Card not found")
+
+    try:
+        result = await compound_llm_service.review_breakdown(db, card_id)
+    except Exception as exc:
+        raise HTTPException(502, "Compound breakdown review failed") from exc
+
+    if result.get("flagged"):
+        await db.commit()
+
+    return result
 
 
 @router.post("/cards/{card_id}/verify-translation")

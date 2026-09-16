@@ -47,4 +47,10 @@ async def verify_translation(db: AsyncSession, card_id: int) -> dict:
 
     verdict, reason = parse_translation_verify_response(response.text)
 
-    return {"status": "checked", "verdict": verdict, "reason": reason}
+    return {
+        "status": "checked",
+        "verdict": verdict,
+        "reason": reason,
+        "input_tokens": response.input_tokens,
+        "output_tokens": response.output_tokens,
+    }

@@ -21,11 +21,12 @@ from src.api.deps import get_db
 from src.db.models.base import utcnow
 from src.db.models.card import Card
 from src.db.models.card_flag import CardFlag
-from src.db.services import card_service, lexicon_service
+from src.db.services import card_service, correction_service, lexicon_service
 from src.utils.card_overrides import (
     apply_overrides,
     delete_override,
     load_overrides,
+    upsert_flag,
     upsert_override,
 )
 from src.utils.compound import decompose, enumerate_segmentations, gloss_candidates
@@ -148,30 +149,8 @@ async def create_flag(card_id: int, payload: FlagCreate, db: AsyncSession = Depe
     user_id = current_user()
     flagged_value = await _snapshot_flagged_value(db, card, payload.target, user_id)
 
-    existing = await db.scalar(
-        select(CardFlag).where(
-            CardFlag.user_id == user_id,
-            CardFlag.card_id == card_id,
-            CardFlag.target == payload.target,
-            CardFlag.status == "open",
-        )
-    )
-    if existing:
-        existing.note = payload.note
-        existing.flagged_value = flagged_value
-        flag = existing
-    else:
-        flag = CardFlag(
-            user_id=user_id,
-            card_id=card_id,
-            target=payload.target,
-            note=payload.note,
-            flagged_value=flagged_value,
-            status="open",
-        )
-        db.add(flag)
+    flag = await upsert_flag(db, user_id, card_id, payload.target, payload.note, flagged_value)
 
-    await db.flush()
     await db.commit()
     return _flag_dict(flag)
 
@@ -240,6 +219,11 @@ async def update_flag_status(flag_id: int, payload: FlagStatusUpdate, db: AsyncS
 async def upsert_card_override(
     card_id: int, target: str, body: OverridePut, db: AsyncSession = Depends(get_db)
 ):
+    """Writes go through correction_service.apply_decision() (not
+    upsert_override directly) so every drawer override write is also logged
+    to card_correction_event — the same choke point triage uses. Validation
+    stays here (_validate_override_payload) so the 422 messages this route
+    already returns are unchanged."""
     if target not in _OVERRIDE_TARGETS:
         raise HTTPException(422, f"target must be one of {sorted(_OVERRIDE_TARGETS)}")
 
@@ -250,7 +234,26 @@ async def upsert_card_override(
     await _validate_override_payload(db, card, target, body.payload)
 
     user_id = current_user()
-    await upsert_override(db, user_id, card_id, target, body.payload)
+    if target == "translation":
+        decision = {
+            "card_id": card_id, "target": "translation", "action": "correct",
+            "payload": {
+                "english": body.payload["english"],
+                "from_candidate": bool(body.payload.get("from_candidate", False)),
+            },
+        }
+    elif body.payload.get("suppressed") is True:
+        decision = {"card_id": card_id, "target": "compound", "action": "suppress"}
+    else:
+        decision = {
+            "card_id": card_id, "target": "compound", "action": "edit_gloss",
+            "payload": {"parts": body.payload["parts"]},
+        }
+
+    try:
+        await correction_service.apply_decision(db, user_id, decision, source="drawer")
+    except correction_service.CorrectionError as exc:
+        raise HTTPException(422, str(exc)) from exc
     await db.commit()
 
     return {"card_id": card_id, "target": target, "payload": body.payload}
