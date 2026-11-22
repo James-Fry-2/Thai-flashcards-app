@@ -6,11 +6,10 @@ turned-o glyph (ᴐ U+1D10 → ɔ U+0254), and returns syllables joined by ".".
 
 Returns an empty string on any failure so callers never crash.
 """
-from src.utils.thai_repetition import expand_repetition_marks
+from src.utils.thai_tokenize import romanization_tokens
 
 try:
     from pythainlp.transliterate import transliterate
-    from pythainlp.tokenize import word_tokenize
     _AVAILABLE = True
 except ImportError:  # pragma: no cover
     _AVAILABLE = False
@@ -26,9 +25,8 @@ def thai_to_ipa(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
-    text = expand_repetition_marks(text)
     try:
-        tokens = word_tokenize(text, engine="newmm")
+        tokens = romanization_tokens(text)
         parts: list[str] = []
         for token in tokens:
             if not any("฀" <= ch <= "๿" for ch in token):

@@ -1,0 +1,72 @@
+name: Release
+
+# Push a tag like v1.0.0 to run the tests, publish the Docker image to GHCR
+# and create a GitHub Release with the changelog entry and a ready-to-run bundle.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    name: Publish Docker image
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create GitHub Release
+    needs: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract changelog entry
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" {found=1; next}
+            found && /^## \[/ {exit}
+            found {print}
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || echo "See CHANGELOG.md" > release-notes.md
+      - name: Build run bundle
+        run: |
+          bundle="dek-kard-${GITHUB_REF_NAME}"
+          mkdir "$bundle"
+          sed "s/\${DEK_KARD_VERSION:-latest}/\${DEK_KARD_VERSION:-${GITHUB_REF_NAME#v}}/" deploy/docker-compose.yml > "$bundle/docker-compose.yml"
+          cp .env.example "$bundle/.env.example"
+          zip -r "$bundle.zip" "$bundle"
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Dek-Kard ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: dek-kard-${{ github.ref_name }}.zip

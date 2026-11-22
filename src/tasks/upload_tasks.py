@@ -25,6 +25,7 @@ from src.db.models.upload_page import UploadPage
 from src.db.models.card import Card
 from src.ocr.pipeline import run_ocr_pipeline
 from src.utils.file_parser import prepare_file_for_ocr, extract_pdf_text_layer, get_pdf_page_count, slice_pdf
+from src.utils.text_integrity import count_replacement_chars, repair_non_thai_field
 from src.llm.registry import get_provider, LLMTask
 from src.llm.prompts.card_generation import build_card_generation_messages
 from src.db.services.card_service import bulk_create_cards, create_card
@@ -313,7 +314,12 @@ async def _stage_ocr(db, upload: Upload, settings) -> None:
 
         # §6: use text layer if sufficient, skip rasterize + OCR
         layer_text = text_layer[idx] if idx < len(text_layer) else ""
-        if len(layer_text) >= min_chars:
+        replacement_count = count_replacement_chars(layer_text)
+        text_layer_usable = (
+            len(layer_text) >= min_chars
+            and replacement_count <= settings.pdf_text_max_replacement_chars
+        )
+        if text_layer_usable:
             page.text = layer_text
             page.engine_used = "pdf_text"
             page.confidence = 1.0
@@ -321,6 +327,12 @@ async def _stage_ocr(db, upload: Upload, settings) -> None:
             last_engine = "pdf_text"
             last_confidence = 1.0
         else:
+            if len(layer_text) >= min_chars:
+                logger.info(
+                    f"Upload {upload.id} page {idx}: text layer has {replacement_count} "
+                    f"replacement char(s) (max {settings.pdf_text_max_replacement_chars}) "
+                    f"— falling back to OCR"
+                )
             try:
                 result = await run_ocr_pipeline(image_bytes, media_type)
                 page.text = result.text
@@ -443,6 +455,8 @@ async def _stage_generating(db, upload: Upload) -> None:
     settings = get_settings()
     cards_data = await _generate_cards_chunked(raw_text, settings.card_generation_char_budget)
 
+    integrity_flags = await _apply_integrity_guard(db, upload.id, cards_data)
+
     from src.db.services.preferences_service import get_preferences
     prefs = await get_preferences(db)
     await asyncio.to_thread(_fill_romanization, cards_data, prefs)
@@ -455,6 +469,9 @@ async def _stage_generating(db, upload: Upload) -> None:
             cards_data=cards_data,
             source_upload_id=upload.id,
         )
+
+    if integrity_flags and created:
+        await _file_integrity_flags(db, created, integrity_flags)
 
     upload.cards_created = len(created)
     upload.stage = "tagging"
@@ -489,6 +506,97 @@ async def _stage_tagging(db, upload: Upload) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+async def _apply_integrity_guard(db, upload_id: int, cards_data: list) -> list[dict]:
+    """Normalise/repair LLM-generated card text before romanization is
+    computed from it (see the text-integrity design doc). Runs before
+    generate_all() so romanization schemes are derived from repaired Thai.
+
+    Returns a list of flag specs — {thai, field, original, repaired, reason}
+    — one per card field that needs review. Cards are matched to their flag
+    by the *repaired* Thai text once they exist (see _file_integrity_flags).
+    """
+    from src.db.services.text_integrity_service import repair_thai_field
+
+    flag_specs: list[dict] = []
+
+    for card in cards_data:
+        thai_flag = None
+        thai = card.get("thai") or ""
+        if thai:
+            result, validated = await repair_thai_field(db, thai, "thai")
+            if result.changed:
+                logger.info(f"Upload {upload_id}: text_integrity repaired thai — {result.repairs}")
+            card["thai"] = result.text
+            if result.invalid_remaining:
+                thai_flag = {"field": "thai", "original": thai, "repaired": result.text, "reason": "invalid_chars"}
+            elif result.changed and not validated:
+                thai_flag = {
+                    "field": "thai", "original": thai, "repaired": result.text,
+                    "reason": "invalid_chars_unverified_repair",
+                }
+
+        example_flag = None
+        example_thai = card.get("example_thai") or ""
+        if example_thai:
+            result, validated = await repair_thai_field(db, example_thai, "example_thai")
+            if result.changed:
+                logger.info(f"Upload {upload_id}: text_integrity repaired example_thai — {result.repairs}")
+            card["example_thai"] = result.text
+            if result.invalid_remaining:
+                example_flag = {
+                    "field": "example_thai", "original": example_thai, "repaired": result.text,
+                    "reason": "invalid_chars",
+                }
+            elif result.changed and not validated:
+                example_flag = {
+                    "field": "example_thai", "original": example_thai, "repaired": result.text,
+                    "reason": "invalid_chars_unverified_repair",
+                }
+
+        for key in ("english", "example_english", "romanization"):
+            value = card.get(key)
+            if not value:
+                continue
+            non_thai_result = repair_non_thai_field(value)
+            if non_thai_result.changed:
+                logger.info(f"Upload {upload_id}: text_integrity repaired {key} — {non_thai_result.repairs}")
+                card[key] = non_thai_result.text
+
+        for flag in (thai_flag, example_flag):
+            if flag is not None:
+                flag_specs.append({"thai": card.get("thai") or "", **flag})
+
+    return flag_specs
+
+
+async def _file_integrity_flags(db, created_cards: list, flag_specs: list[dict]) -> None:
+    """File a CardFlag(target='other') for each integrity flag spec, matched
+    to the created card by its (already-repaired) Thai text."""
+    import json as _json
+    from src.utils.card_overrides import upsert_flag
+    from src.utils.current_user import current_user
+
+    by_thai = {c.thai: c for c in created_cards}
+    user_id = current_user()
+
+    for spec in flag_specs:
+        card = by_thai.get(spec["thai"])
+        if card is None:
+            continue
+        flagged_value = _json.dumps(
+            {
+                "field": spec["field"],
+                "original": spec["original"],
+                "repaired": spec["repaired"],
+                "reason": spec["reason"],
+            },
+            ensure_ascii=False,
+        )
+        await upsert_flag(db, user_id, card.id, "other", None, flagged_value)
+
+    await db.commit()
+
 
 def _fill_romanization(cards_data: list, prefs) -> None:
     """Compute all romanization schemes for each card and resolve the effective value."""

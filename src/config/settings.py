@@ -40,6 +40,9 @@ class Settings(BaseSettings):
 
     # PDF text extraction (§6): pages with >= this many chars skip rasterize + OCR
     pdf_text_min_chars: int = 40
+    # ...and at most this many U+FFFD replacement chars — otherwise a broken font
+    # CMap has corrupted the text layer and the page falls back to OCR instead.
+    pdf_text_max_replacement_chars: int = 0
 
     # Card generation chunking (§7): text exceeding this triggers per-chunk generation
     card_generation_char_budget: int = 12000

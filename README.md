@@ -1,198 +1,135 @@
 # Dek-Kard
 
-Self-hosted Thai language flashcard app. Upload PDFs or photos of your notes, auto-generate cards via Claude, review with spaced repetition (FSRS), and export to Anki.
+**Turn Thai textbooks, worksheets and photos of handwritten notes into spaced-repetition flashcards that you can check and correct.**
 
-## Features
+Dek-Kard (เด็กการ์ด, "kid card") is a self-hosted web app for learners of Thai. Upload a PDF or a photo and it OCRs the Thai text, uses Claude to pull out vocabulary and example sentences, adds romanization, compound-word breakdowns and confusable-word warnings, then schedules review with the FSRS algorithm. Cards the system is unsure about go to a triage queue so you can check them before you learn them.
 
-- **OCR pipeline** — PaddleOCR → EasyOCR → Claude Vision (confidence-based fallback)
-- **AI card generation** — Claude extracts Thai vocabulary with romanization, English translation, and example sentences
-- **Spaced repetition** — FSRS algorithm with per-direction schedules (Thai→English, English→Thai, listening)
-- **Gamification** — XP, levels, streaks, and achievements
-- **Anki export** — Download any deck as `.apkg`
-- **Single container** — SQLite + React frontend, no external services required
+[![CI](https://github.com/James-Fry-2/Thai-flashcards-app/actions/workflows/ci.yml/badge.svg)](https://github.com/James-Fry-2/Thai-flashcards-app/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/James-Fry-2/Thai-flashcards-app)](https://github.com/James-Fry-2/Thai-flashcards-app/releases/latest)
 
 ---
 
-## Quick Start (Docker)
+## What it does
 
-**1. Clone and configure**
+| | |
+|---|---|
+| **Ingest anything** | PDFs, whole textbooks (with automatic chapter detection) and phone photos of notes. A layered OCR pipeline moves to the next engine when confidence drops: embedded PDF text → PaddleOCR → EasyOCR → Claude Vision. |
+| **Generate cards** | Claude extracts vocabulary, translations, example sentences and topic tags. Duplicates are merged and corrupted OCR text is rejected before it reaches a card. |
+| **Learn** | FSRS spaced repetition, scheduled separately for each direction (Thai→English, English→Thai, listening). Mixed practice sessions with multiple-choice and recall exercises. Review by deck, topic, chapter, search or "at risk" set. |
+| **Understand Thai words** | RTGS, Paiboon and IPA romanization (pick one in Settings). Compound words split into glossed parts using the Volubilis dictionary. Pairs that sound or look alike are linked so you can tell them apart. |
+| **Trust the content** | Possible mistranslations are flagged automatically and can be checked by an LLM. A triage screen walks through flagged cards, and your corrections are stored as overrides, so the generated original is never lost. |
+| **Track progress** | Mastery bands, weak topics and chapters, error patterns, trends, XP, streaks and achievements. |
+| **Take it with you** | Export any deck to Anki (`.apkg`). |
 
-```bash
-cp .env.example .env
-# Edit .env — at minimum set ANTHROPIC_API_KEY
+## Architecture
+
+```mermaid
+flowchart LR
+    U[Upload<br/>PDF / book / photo] --> W[Background worker<br/>checkpointed stages]
+    W --> O[OCR pipeline<br/>PDF text → Paddle → Easy → Claude Vision]
+    O --> G[Card generation<br/>Claude]
+    G --> E[Enrichment<br/>romanization · compounds ·<br/>confusables · embeddings · translation check]
+    E --> DB[(SQLite)]
+    DB --> API[FastAPI REST API]
+    API --> FE[React SPA<br/>review · practice · triage · insights]
+    DB --> A[Anki .apkg export]
 ```
 
-**2. Run**
+| Layer | Tech |
+|---|---|
+| Backend | Python 3.12, FastAPI, async SQLAlchemy 2, Alembic, Pydantic settings |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, React Query, Recharts, Framer Motion |
+| AI / NLP | Anthropic Claude (provider abstraction, model chosen per task), PaddleOCR, EasyOCR, sentence-transformers, PyThaiNLP, wordfreq |
+| Learning | FSRS scheduler, genanki |
+| Delivery | Single Docker image (multi-stage build), GitHub Actions CI, release images on GHCR |
+
+Some design choices:
+- **The database is the job queue.** Upload processing runs in stages, records a checkpoint after each one and resumes after a crash or restart, without needing Redis or Celery.
+- **Deterministic first, LLM second.** Compound segmentation, confusable detection and translation flagging use dictionaries and edit distance. The LLM is only called when you ask it to verify something.
+- **Overrides, not edits.** Your corrections sit on top of generated cards, so a regenerated card keeps them and the original is kept for audit.
+- **Romanization is computed in advance** for every scheme, so switching schemes in Settings is a column swap, not a recomputation.
+
+---
+
+## Quick start (prebuilt release)
+
+You need [Docker](https://docs.docker.com/get-docker/) and an [Anthropic API key](https://console.anthropic.com/).
+
+1. Download `dek-kard-vX.Y.Z.zip` from the [latest release](https://github.com/James-Fry-2/Thai-flashcards-app/releases/latest) and unzip it.
+2. Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` and `SECRET_KEY`.
+3. Start the app:
+   ```bash
+   docker compose up -d
+   ```
+4. Open <http://localhost:8000>.
+
+Your cards, uploads and review history are stored in `./data`. To back them up, copy that folder.
+
+## Build from source
 
 ```bash
+git clone https://github.com/James-Fry-2/Thai-flashcards-app.git
+cd Thai-flashcards-app
+cp .env.example .env        # set ANTHROPIC_API_KEY and SECRET_KEY
 docker compose up --build
 ```
 
-App is available at [http://localhost:8000](http://localhost:8000).
+The optional IronOCR sidecar (commercial licence) is off by default. To start it, run `docker compose --profile ironocr up --build` and set `IRONOCR_URL=http://ironocr:5050`.
 
-**Backup your data:**
+### Local development
 
-```bash
-cp -r ./data ./backup-$(date +%Y%m%d)
-```
-
----
-
-## Local Development
-
-**Requirements:** Python 3.12+, Node 20+
-
-**Backend**
+Requires Python 3.12+ and Node 20+.
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Run migrations
 alembic upgrade head
-
-# Start API (with hot reload)
-DATABASE_URL="sqlite+aiosqlite:///./data/dek_kard.db" \
-MEDIA_DIR="./data/media" \
-ANTHROPIC_API_KEY="sk-ant-..." \
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+bash scripts/dev.sh          # API on :8000, Vite dev server on :5173
 ```
 
-**Frontend**
+Run the tests with `pytest`. The interactive API docs are at <http://localhost:8000/docs>.
+
+### Optional: Thai dictionary
+
+Compound-word glosses use the [Volubilis](http://belisan-volubilis.blogspot.com/) Thai–English dictionary. It isn't included because of its licence. Download the *VOLUBILIS DATABASE* spreadsheet yourself and load it:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+python scripts/ingest_lexicon.py --source-file path/to/volubilis.xlsx --dry-run   # then rerun without --dry-run
 ```
 
-**Or use the dev script (runs both together):**
+Without it, everything else works and compound breakdowns are simply skipped.
 
-```bash
-# Requires .venv to be set up and ANTHROPIC_API_KEY in environment
-bash scripts/dev.sh
-```
+## Configuration
 
-| Service | URL |
-|---|---|
-| Frontend (Vite dev) | http://localhost:5173 |
-| API | http://localhost:8000 |
-| API docs (Swagger) | http://localhost:8000/docs |
+All settings are environment variables (see [`.env.example`](.env.example)). The main ones:
 
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and edit:
-
-| Variable | Default | Description |
+| Variable | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | *(required)* | Anthropic API key |
-| `OPENAI_API_KEY` | *(optional)* | Only needed if switching a task to OpenAI |
-| `DATABASE_URL` | `sqlite+aiosqlite:////data/dek_kard.db` | SQLite path (in Docker: `/data/`) |
-| `MEDIA_DIR` | `/data/media` | Uploaded file storage |
-| `CARD_GENERATION_MODEL` | `claude-opus-4-6` | Model used to generate flashcards |
-| `OCR_FALLBACK_MODEL` | `claude-3-5-haiku-20241022` | Model used when local OCR confidence is low |
-| `OCR_CONFIDENCE_THRESHOLD` | `0.75` | Below this, OCR falls back to next engine |
-| `MAX_UPLOAD_SIZE_MB` | `20` | Maximum upload file size |
-| `SECRET_KEY` | *(required)* | App secret — set to any 32+ char string |
+| `ANTHROPIC_API_KEY` | *(required)* | Claude access |
+| `SECRET_KEY` | *(required)* | App secret, 32+ characters |
+| `CARD_GENERATION_MODEL` | `claude-opus-4-6` | Model that writes the cards |
+| `*_PROVIDER` / `*_MODEL` | Claude Haiku | Model for each task: OCR fallback, tagging, compound review, translation check |
+| `OCR_CONFIDENCE_THRESHOLD` | `0.60` | Below this, OCR moves to the next engine |
+| `MAX_UPLOAD_SIZE_MB` / `MAX_BOOK_UPLOAD_SIZE_MB` | `20` / `300` | Upload limits |
 
----
-
-## Usage
-
-### Uploading documents
-
-1. Navigate to **Upload** in the app
-2. Drop a PDF or image (Thai text, notes, screenshots, etc.)
-3. The app will OCR the file, extract vocabulary, and generate flashcards
-4. Poll the upload status — cards appear in the deck when `status: done`
-
-Supported formats: PDF, PNG, JPG, JPEG, WEBP
-
-### Reviewing cards
-
-1. Open a deck → **Start Review**
-2. Rate each card: **Again (1)** / **Hard (2)** / **Good (3)** / **Easy (4)**
-3. FSRS schedules the next review automatically
-4. XP and streak update after each session
-
-### Exporting to Anki
-
-From any deck's detail page, click **Export to Anki** to download an `.apkg` file importable into [Anki](https://apps.ankiweb.net).
-
----
-
-## API Reference
-
-The full interactive API docs are at `/docs` when the server is running.
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/uploads/` | Upload file → background OCR + card generation |
-| `GET` | `/api/uploads/{id}` | Poll upload job status |
-| `GET` | `/api/decks/` | List decks |
-| `POST` | `/api/decks/` | Create a deck |
-| `GET` | `/api/decks/{id}/cards` | Paginated card list |
-| `POST` | `/api/cards/{id}` | Create card manually |
-| `PATCH` | `/api/cards/{id}` | Edit card |
-| `DELETE` | `/api/cards/{id}` | Delete card |
-| `POST` | `/api/review/session` | Start SRS session |
-| `POST` | `/api/review/session/{id}/rate` | Submit rating (1–4) |
-| `POST` | `/api/review/session/{id}/end` | End session |
-| `GET` | `/api/export/decks/{id}/anki` | Download `.apkg` |
-| `GET` | `/api/gamification/profile` | XP, level, streak, achievements |
-| `GET` | `/health` | Health check |
-
----
-
-## Project Structure
+## Project layout
 
 ```
-dek-kard/
-├── src/                    # Python backend (FastAPI)
-│   ├── main.py             # App entry point
-│   ├── config/             # Settings (pydantic-settings)
-│   ├── db/
-│   │   ├── models/         # SQLAlchemy ORM models
-│   │   └── services/       # Business logic
-│   ├── llm/                # LLM provider abstraction (Claude, OpenAI)
-│   │   └── prompts/        # Card generation + OCR fallback prompts
-│   ├── ocr/                # OCR pipeline (PaddleOCR → EasyOCR → Claude Vision)
-│   ├── tasks/              # Background upload processing
-│   ├── api/routes/         # REST endpoints
-│   └── utils/              # FSRS scheduler, Anki exporter, file parser
-├── frontend/               # React 18 + TypeScript + TailwindCSS
-│   └── src/
-│       ├── pages/          # Upload, Decks, DeckDetail, Review, Dashboard
-│       └── components/     # FlashCard, XPBar, StreakBadge, UploadDropzone
-├── alembic/                # Database migrations
-├── scripts/dev.sh          # Local dev startup script
-├── docker-compose.yml
-├── Dockerfile
-└── .env.example
+src/
+  api/routes/     REST endpoints (cards, decks, uploads, review, practice, triage, analytics, search, export…)
+  db/             SQLAlchemy models and service layer
+  ocr/            Multi-engine OCR pipeline with confidence scoring
+  llm/            Provider abstraction and prompts
+  tasks/          Checkpointed upload worker
+  practice/       Exercise registry for practice mode
+  utils/          FSRS, romanization, compounds, confusables, embeddings, Anki export…
+frontend/src/     React pages (Dashboard, Decks, Review, Practice, Triage, Books, Search, Settings…)
+alembic/          Database migrations
+tests/            pytest suite
 ```
 
----
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-## Database
+## Licence
 
-SQLite by default, stored at `./data/dek_kard.db`. The schema is SQLAlchemy-managed and PostgreSQL-compatible if you ever need to scale.
-
-**Reset SRS state for a deck** (cards reappear as new):
-
-```sql
-DELETE FROM card_schedules
-WHERE card_id IN (SELECT id FROM cards WHERE deck_id = <deck_id>);
-```
-
-**Migrations:**
-
-```bash
-# Apply all pending migrations
-alembic upgrade head
-
-# Create a new migration after model changes
-alembic revision --autogenerate -m "description"
-```
+Code is released under the [MIT licence](LICENSE). The Volubilis dictionary data is not part of this repository and keeps its own terms.

@@ -18,8 +18,20 @@ from src.db.models.topic import Topic, CardTopic
 from src.utils.romanization import generate_all, resolve_effective
 from src.utils.card_overrides import apply_overrides, load_open_flag_targets, load_overrides
 from src.utils.current_user import current_user
+from src.utils.text_integrity import find_invalid_chars, normalise_text
 
 router = APIRouter(tags=["cards"])
+
+
+def _normalize_thai_or_422(value: str, field_name: str) -> str:
+    """Deterministic normalisation only (decision 4) — no silent repair on
+    user input. A 422 names the offending code point instead."""
+    normalized, _ = normalise_text(value)
+    invalid = find_invalid_chars(normalized)
+    if invalid:
+        _, name = invalid[0]
+        raise HTTPException(422, f"{field_name} contains an invalid character: {name}")
+    return normalized
 
 
 class CardCreate(BaseModel):
@@ -233,8 +245,14 @@ async def create_card(
     include_analysis: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
+    thai = _normalize_thai_or_422(payload.thai, "thai")
+    example_thai = (
+        _normalize_thai_or_422(payload.example_thai, "example_thai")
+        if payload.example_thai else payload.example_thai
+    )
+
     prefs = await get_preferences(db)
-    schemes = await asyncio.to_thread(generate_all, payload.thai)
+    schemes = await asyncio.to_thread(generate_all, thai)
     romanization_manual = payload.romanization or None
     effective = resolve_effective(
         {
@@ -249,14 +267,14 @@ async def create_card(
     card = await card_service.create_card(
         db,
         deck_id=deck_id,
-        thai=payload.thai,
+        thai=thai,
         english=payload.english,
         romanization=effective,
         romanization_paiboon=schemes.get("paiboon") or None,
         romanization_rtgs=schemes.get("rtgs") or None,
         romanization_ipa=schemes.get("ipa") or None,
         romanization_manual=romanization_manual,
-        example_thai=payload.example_thai,
+        example_thai=example_thai,
         example_english=payload.example_english,
         card_type=payload.card_type,
     )
@@ -276,6 +294,11 @@ async def update_card(
         raise HTTPException(404, "Card not found")
 
     update_kwargs = payload.model_dump(exclude_none=True)
+
+    if "thai" in update_kwargs:
+        update_kwargs["thai"] = _normalize_thai_or_422(update_kwargs["thai"], "thai")
+    if "example_thai" in update_kwargs:
+        update_kwargs["example_thai"] = _normalize_thai_or_422(update_kwargs["example_thai"], "example_thai")
 
     # User-provided 'romanization' becomes the manual override
     user_romanization = update_kwargs.pop("romanization", None)

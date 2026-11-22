@@ -17,11 +17,10 @@ import re
 import sys
 from typing import Optional
 
-from src.utils.thai_repetition import expand_repetition_marks
+from src.utils.thai_tokenize import romanization_tokens
 
 try:
     from pythainlp.transliterate import transliterate
-    from pythainlp.tokenize import word_tokenize
     _PYTHAINLP_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _PYTHAINLP_AVAILABLE = False
@@ -210,10 +209,9 @@ def thai_to_paiboon(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
-    text = expand_repetition_marks(text)
 
     try:
-        tokens = word_tokenize(text, engine="newmm")
+        tokens = romanization_tokens(text)
         parts: list[str] = []
         for token in tokens:
             if not any("\u0e00" <= ch <= "\u0e7f" for ch in token):

@@ -1,0 +1,25 @@
+# Dek-Kard — run the prebuilt release image (no build step, no source checkout).
+#
+#   1. Put this file and `.env` (copied from .env.example, with ANTHROPIC_API_KEY set) in a folder
+#   2. docker compose up -d
+#   3. Open http://localhost:8000
+#
+# Your cards, uploads and review history live in ./data — back it up by copying the folder.
+services:
+  app:
+    image: ghcr.io/james-fry-2/thai-flashcards-app:${DEK_KARD_VERSION:-latest}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////data/dek_kard.db
+      MEDIA_DIR: /data/media
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

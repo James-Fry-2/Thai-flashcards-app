@@ -11,9 +11,6 @@ services:
       DATABASE_URL: sqlite+aiosqlite:////data/dek_kard.db
       MEDIA_DIR: /data/media
       # IRONOCR_URL: http://ironocr:5050  # enable once IronOCR has a valid deployment license
-    depends_on:
-      ironocr:
-        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -22,7 +19,10 @@ services:
       retries: 3
       start_period: 15s
 
+  # Optional commercial OCR sidecar. Not started by default; enable with:
+  #   docker compose --profile ironocr up --build   (and set IRONOCR_URL on the app)
   ironocr:
+    profiles: ["ironocr"]
     build: ./ironocr-service
     ports:
       - "5050:5050"
