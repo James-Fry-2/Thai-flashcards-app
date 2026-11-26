@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from 'react-query'
 import {
   ArrowLeft, BookOpen, CheckCircle, AlertCircle,
-  Loader2, PlayCircle, Clock,
+  Loader2, PlayCircle, Clock, Glasses,
 } from 'lucide-react'
 import api from '../services/api'
 import type { Upload, ChapterBoundary } from '../types'
@@ -123,6 +123,16 @@ function ChapterRow({
     })
   }
 
+  const handleRead = async () => {
+    if (!chapter.child_upload_id) return
+    try {
+      const r = await api.get(`/reading/uploads/${chapter.child_upload_id}/first-page`)
+      navigate(`/read/${chapter.child_upload_id}/${r.data.page_index}`)
+    } catch {
+      // interceptor shows the error toast
+    }
+  }
+
   return (
     <li className="card flex items-center gap-3 py-3 px-4">
       {/* Status icon */}
@@ -163,6 +173,13 @@ function ChapterRow({
               {dueCount} due
             </span>
           )}
+          <button
+            onClick={handleRead}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium hover:border-brand-200 hover:text-brand-600 transition-colors"
+          >
+            <Glasses size={13} />
+            Read
+          </button>
           <button
             onClick={handleStudy}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"

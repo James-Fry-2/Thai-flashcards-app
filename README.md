@@ -109,6 +109,7 @@ All settings are environment variables (see [`.env.example`](.env.example)). The
 | `SECRET_KEY` | *(required)* | App secret, 32+ characters |
 | `CARD_GENERATION_MODEL` | `claude-opus-4-6` | Model that writes the cards |
 | `*_PROVIDER` / `*_MODEL` | Claude Haiku | Model for each task: OCR fallback, tagging, compound review, translation check |
+| `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` | *(empty)* / `southeastasia` | Thai audio via Azure Neural voices, cached in `MEDIA_DIR/tts`. Empty key turns it off |
 | `OCR_CONFIDENCE_THRESHOLD` | `0.60` | Below this, OCR moves to the next engine |
 | `MAX_UPLOAD_SIZE_MB` / `MAX_BOOK_UPLOAD_SIZE_MB` | `20` / `300` | Upload limits |
 

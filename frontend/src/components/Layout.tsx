@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks, Shuffle, ClipboardCheck } from 'lucide-react'
+import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, BookOpen, ListChecks, Shuffle, ClipboardCheck, Glasses } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useActiveUploads } from '../hooks/useActiveUploads'
 import { useTriageQueue } from '../hooks/useTriageQueue'
@@ -73,6 +73,7 @@ export default function Layout() {
           <NavItem to="/at-risk" icon={<AlertTriangle size={16} />} label="At-risk" />
           <NavItem to="/quiz" icon={<ListChecks size={16} />} label="Quiz" />
           <NavItem to="/practice" icon={<Shuffle size={16} />} label="Practice" />
+          <NavItem to="/read" icon={<Glasses size={16} />} label="Read" />
           <NavItem to="/triage" icon={<ClipboardCheck size={16} />} label="Triage" badge={triageCount} />
           <NavItem to="/books" icon={<BookOpen size={16} />} label="Books" />
           <NavItem to="/upload" icon={<Upload size={16} />} label="Upload" />

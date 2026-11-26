@@ -6,6 +6,13 @@ const api = axios.create({
   timeout: 60_000,
 })
 
+// Lets the backend work out when the user's study day starts (04:00 local),
+// for daily new-card / review limits.
+api.interceptors.request.use((config) => {
+  config.headers['X-Timezone-Offset'] = String(new Date().getTimezoneOffset())
+  return config
+})
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {

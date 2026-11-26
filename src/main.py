@@ -11,7 +11,7 @@ from src.db.database import get_engine, get_session_factory
 from src.db.models import Base
 from src.db.services.gamification_service import seed_achievements
 from src.llm.registry import register_providers
-from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics, search, preferences, quiz, practice, flags, triage
+from src.api.routes import uploads, decks, cards, review, export, gamification, analytics, tags, links, topics, search, preferences, quiz, practice, flags, triage, reading, tts
 from src.tasks.upload_worker import recover_interrupted, run_worker_loop
 
 
@@ -93,6 +93,8 @@ def create_app() -> FastAPI:
     app.include_router(practice.router, prefix=prefix)
     app.include_router(flags.router, prefix=prefix)
     app.include_router(triage.router, prefix=prefix)
+    app.include_router(reading.router, prefix=prefix)
+    app.include_router(tts.router, prefix=prefix)
 
     @app.get("/health")
     async def health():

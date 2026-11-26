@@ -14,6 +14,10 @@ _DEFAULT_FALLBACK = "paiboon"
 VALID_DISPLAY = {"source", "paiboon", "rtgs", "ipa"}
 VALID_FALLBACK = {"paiboon", "rtgs", "ipa", "none"}
 
+NEW_LIMIT_RANGE = (0, 200)
+REVIEW_LIMIT_RANGE = (10, 2000)
+VALID_TTS_SPEED = {"normal", "slow"}
+
 
 async def get_preferences(db: AsyncSession) -> UserPreferences:
     """Return the singleton row, creating it with defaults if absent."""
@@ -33,6 +37,10 @@ async def update_preferences(
     db: AsyncSession,
     romanization_display: Optional[str] = None,
     romanization_fallback: Optional[str] = None,
+    daily_new_limit: Optional[int] = None,
+    daily_review_limit: Optional[int] = None,
+    tts_autoplay_on_reveal: Optional[bool] = None,
+    tts_default_speed: Optional[str] = None,
 ) -> UserPreferences:
     """Update preferences and, if romanization settings changed, recompute effective columns."""
     prefs = await get_preferences(db)
@@ -55,6 +63,26 @@ async def update_preferences(
         if prefs.romanization_fallback != romanization_fallback:
             prefs.romanization_fallback = romanization_fallback
             rom_changed = True
+
+    if daily_new_limit is not None:
+        lo, hi = NEW_LIMIT_RANGE
+        if not lo <= daily_new_limit <= hi:
+            raise ValueError(f"daily_new_limit must be between {lo} and {hi}")
+        prefs.daily_new_limit = daily_new_limit
+
+    if daily_review_limit is not None:
+        lo, hi = REVIEW_LIMIT_RANGE
+        if not lo <= daily_review_limit <= hi:
+            raise ValueError(f"daily_review_limit must be between {lo} and {hi}")
+        prefs.daily_review_limit = daily_review_limit
+
+    if tts_autoplay_on_reveal is not None:
+        prefs.tts_autoplay_on_reveal = tts_autoplay_on_reveal
+
+    if tts_default_speed is not None:
+        if tts_default_speed not in VALID_TTS_SPEED:
+            raise ValueError(f"tts_default_speed must be one of {sorted(VALID_TTS_SPEED)}")
+        prefs.tts_default_speed = tts_default_speed
 
     prefs.updated_at = datetime.now(timezone.utc)
     await db.flush()

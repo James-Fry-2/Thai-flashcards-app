@@ -1,12 +1,12 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from src.api.deps import get_db
 from src.db.services import card_service, review_service, gamification_service
-from src.db.services import review_session_service
+from src.db.services import review_session_service, daily_limits_service
 from src.db.models.card import Card
 from src.db.models.card_schedule import CardSchedule
 from src.db.models.review_log import ReviewLog
@@ -98,9 +98,32 @@ def _interleave_mixed(
 
 
 @router.get("/summary")
-async def get_due_summary(db: AsyncSession = Depends(get_db)):
-    """Library-wide due/new card counts and top-5 breakdown by deck and topic."""
-    return await card_service.get_due_summary(db)
+async def get_due_summary(
+    db: AsyncSession = Depends(get_db),
+    x_timezone_offset: Optional[str] = Header(None),
+):
+    """Library-wide due/new counts, top-5 breakdowns, and today's capped workload.
+
+    ``total_due``/``due_today``/``new_cards`` are the raw counts. ``today``
+    is what today's limits actually leave to do; ``to_do_today`` is the
+    headline number the dashboard shows.
+    """
+    tz = daily_limits_service.parse_tz_offset(x_timezone_offset)
+    summary = await card_service.get_due_summary(db)
+    budget = await daily_limits_service.get_budget(db, tz)
+    await db.commit()  # get_budget may create the preferences row
+
+    learning_due = summary["learning_due"]
+    reviews_today = min(budget.review_due, budget.review_remaining)
+    new_today = min(summary["new_cards"], budget.new_remaining)
+    summary["today"] = budget.as_dict()
+    summary["to_do_today"] = learning_due + reviews_today + new_today
+    summary["today_breakdown"] = {
+        "learning": learning_due,
+        "reviews": reviews_today,
+        "new": new_today,
+    }
+    return summary
 
 
 @router.post("/session")
@@ -111,8 +134,18 @@ async def start_session(
     scope: Optional[str] = Query(None),
     strategy: str = Query("due"),
     direction: str = Query("th_to_en"),
+    extend: bool = Query(False, description="'Study more': go past today's limits"),
     db: AsyncSession = Depends(get_db),
+    x_timezone_offset: Optional[str] = Header(None),
 ):
+    """Start a review session.
+
+    Due-card sessions (deck, topic, upload, library ``due``/``mixed``) respect
+    the daily new-card and review limits; ``extend=true`` goes past them.
+    ``at_risk`` and ``catch_up`` are explicit, fixed-size sessions and are
+    not capped. ``held_back`` in the response counts due cards in scope left
+    out only because of today's limits.
+    """
     scope_count = sum([
         deck_id is not None,
         topic_id is not None,
@@ -124,46 +157,56 @@ async def start_session(
             422,
             "Provide exactly one of: deck_id=N, topic_id=N, upload_id=N, or scope=library",
         )
+    if scope == "library" and strategy not in ("due", "at_risk", "mixed", "catch_up"):
+        raise HTTPException(422, f"Unknown strategy {strategy!r}. Use: due, at_risk, mixed, catch_up")
 
     # Mark any sessions left open longer than 24h as abandoned (housekeeping on natural traffic).
     await review_session_service.abandon_stale_sessions(db)
 
+    tz = daily_limits_service.parse_tz_offset(x_timezone_offset)
+    budget = await daily_limits_service.get_budget(db, tz, extend=extend)
+    held_back = 0
+
+    async def due_queue(q_scope: str, q_id: Optional[int], limit: int):
+        nonlocal held_back
+        queue = await daily_limits_service.get_due_queue(db, q_scope, q_id, direction, limit, budget)
+        held_back = queue.held_back
+        return queue
+
     if deck_id is not None:
-        card_schedule_pairs = await card_service.get_due_cards(db, deck_id, limit=20, direction=direction)
+        card_schedule_pairs = (await due_queue("deck", deck_id, 20)).pairs
         session_scope, scope_id, session_strategy = "deck", deck_id, None
 
     elif topic_id is not None:
-        card_schedule_pairs = await card_service.get_due_cards_for_topic(db, topic_id, limit=20, direction=direction)
+        card_schedule_pairs = (await due_queue("topic", topic_id, 20)).pairs
         session_scope, scope_id, session_strategy = "topic", topic_id, None
 
     elif upload_id is not None:
-        card_schedule_pairs = await card_service.get_due_cards_for_upload(
-            db, upload_id, limit=200, direction=direction
-        )
+        card_schedule_pairs = (await due_queue("upload", upload_id, 200)).pairs
         session_scope, scope_id, session_strategy = "upload", upload_id, None
 
     else:  # scope == "library"
-        if strategy not in ("due", "at_risk", "mixed"):
-            raise HTTPException(422, f"Unknown strategy {strategy!r}. Use: due, at_risk, mixed")
-
         session_scope, scope_id, session_strategy = "library", None, strategy
 
         if strategy == "due":
-            card_schedule_pairs = await card_service.get_due_cards_library_wide(
-                db, limit=50, direction=direction
-            )
+            card_schedule_pairs = (await due_queue("library", None, 50)).pairs
         elif strategy == "at_risk":
             card_schedule_pairs = await card_service.get_at_risk_card_pairs(
                 db, limit=20, direction=direction
             )
+        elif strategy == "catch_up":
+            card_schedule_pairs = await daily_limits_service.get_catch_up_queue(db, direction)
         else:  # mixed
-            due_pairs = await card_service.get_due_cards_library_wide(
-                db, limit=50, direction=direction
-            )
-            atrisk_pairs = await card_service.get_at_risk_card_pairs(
-                db, limit=20, direction=direction
-            )
-            card_schedule_pairs = _interleave_mixed(due_pairs, atrisk_pairs, limit=50)
+            queue = await due_queue("library", None, 50)
+            # At-risk cards are graduated reviews too, so they share the
+            # review budget with the due part of the session.
+            atrisk_room = max(0, budget.review_remaining - queue.reviews)
+            atrisk_pairs = []
+            if atrisk_room > 0:
+                atrisk_pairs = await card_service.get_at_risk_card_pairs(
+                    db, limit=min(20, atrisk_room), direction=direction
+                )
+            card_schedule_pairs = _interleave_mixed(queue.pairs, atrisk_pairs, limit=50)
 
     db_session = await review_session_service.create_session(
         db, session_scope, scope_id, session_strategy, direction
@@ -180,7 +223,13 @@ async def start_session(
         for c, s in card_schedule_pairs
     ]
 
-    return {"session_id": db_session.id, "total_cards": len(cards), "cards": cards}
+    return {
+        "session_id": db_session.id,
+        "total_cards": len(cards),
+        "cards": cards,
+        "held_back": held_back,
+        "today": budget.as_dict(),
+    }
 
 
 @router.post("/session/from-cards")

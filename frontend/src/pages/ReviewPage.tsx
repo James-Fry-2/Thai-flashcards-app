@@ -5,20 +5,24 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FlashCard from '../components/FlashCard'
+import { useAudio, useAudioPrefs } from '../hooks/useAudio'
 import api from '../services/api'
 import type { ReviewCard, Deck, TopicSummary } from '../types'
 
-type SessionState = 'loading' | 'reviewing' | 'done'
+type SessionState = 'loading' | 'reviewing' | 'done' | 'limit'
 type Scope = 'deck' | 'topic' | 'library' | 'custom' | 'upload'
 
 interface Session {
   session_id: number
   total_cards: number
   cards: ReviewCard[]
+  /** Due cards left out only because today's limits are used up. */
+  held_back?: number
 }
 
 interface LocationState {
-  strategy?: 'due' | 'at_risk' | 'mixed'
+  strategy?: 'due' | 'at_risk' | 'mixed' | 'catch_up'
+  extend?: boolean
   sessionId?: number
   cards?: ReviewCard[]
   title?: string
@@ -89,6 +93,8 @@ export default function ReviewPage() {
         ? 'Due cards across library'
         : strategy === 'at_risk'
         ? 'At-risk cards across library'
+        : strategy === 'catch_up'
+        ? 'Catch-up: most savable cards first'
         : 'Mixed: due cards and at-risk'
       : undefined
 
@@ -104,6 +110,9 @@ export default function ReviewPage() {
       : `/decks/${scopeId}`
 
   const [state, setState] = useState<SessionState>('loading')
+  // "Study more": go past today's new-card / review limits.
+  const [extend, setExtend] = useState(locationState.extend ?? false)
+  const [run, setRun] = useState(0)
   const [session, setSession] = useState<Session | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
@@ -140,20 +149,47 @@ export default function ReviewPage() {
     } else {
       param = `deck_id=${scopeId}`
     }
+    if (extend) param += '&extend=true'
 
+    setState('loading')
     api.post(`/review/session?${param}`).then((r) => {
       const data: Session = r.data
       if (data.cards.length === 0) {
+        if (data.held_back) {
+          setSession(data)
+          setState('limit')
+          return
+        }
         navigate(backTo)
         toast('No cards due right now!')
         return
       }
       setSession(data)
+      setCurrentIndex(0)
+      setIsFlipped(false)
       setState('reviewing')
     })
-  }, [scope, scopeId, strategy, isUploadScope])
+  }, [scope, scopeId, strategy, isUploadScope, extend, run])
+
+  function studyMore() {
+    setExtend(true)
+    setRun((n) => n + 1) // restart even if already extended
+  }
 
   const currentCard = session?.cards[currentIndex]
+  const audio = useAudio()
+  const { defaultSpeed, autoplayOnReveal } = useAudioPrefs()
+  const speakCurrent = useCallback(() => {
+    if (currentCard) audio.play({ source: { kind: 'card', cardId: currentCard.id }, thai: currentCard.thai, speed: defaultSpeed })
+  }, [currentCard?.id, defaultSpeed])
+
+  // Autoplay the Thai when the answer is revealed (Settings → Audio).
+  useEffect(() => {
+    if (isFlipped && autoplayOnReveal && state === 'reviewing') speakCurrent()
+  }, [isFlipped])
+
+  // Moving to the next card (or leaving the page) stops any audio.
+  useEffect(() => () => audio.stop(), [currentCard?.id])
 
   const handleRate = useCallback(
     async (rating: number) => {
@@ -205,16 +241,41 @@ export default function ReviewPage() {
         e.preventDefault()
         setIsFlipped((f) => !f)
       }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        speakCurrent()
+      }
       if (isFlipped && ['1', '2', '3', '4'].includes(e.key)) {
         handleRate(Number(e.key))
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [state, isFlipped, handleRate])
+  }, [state, isFlipped, handleRate, speakCurrent])
 
   if (state === 'loading') {
     return <div className="text-center py-20 text-gray-400">Loading session…</div>
+  }
+
+  if (state === 'limit' && session) {
+    return (
+      <div className="max-w-sm mx-auto text-center py-20 space-y-4">
+        <div className="text-6xl">✅</div>
+        <h2 className="text-2xl font-bold">Done for today</h2>
+        <p className="text-gray-500">
+          You&apos;ve hit today&apos;s limit. {session.held_back} more{' '}
+          {session.held_back === 1 ? 'card is' : 'cards are'} waiting. They&apos;ll still be there tomorrow.
+        </p>
+        <div className="flex flex-col gap-2 items-center">
+          <Link to={backTo} className="btn-primary">
+            Finish for today
+          </Link>
+          <button onClick={studyMore} className="btn-secondary text-sm">
+            Study more anyway
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (state === 'done' && summary) {
@@ -239,9 +300,16 @@ export default function ReviewPage() {
         {summary.streak > 1 && (
           <p className="text-orange-500 font-medium">🔥 {summary.streak}-day streak!</p>
         )}
-        <Link to={backTo} className="btn-primary mx-auto">
-          {backLabel}
-        </Link>
+        <div className="flex flex-col gap-2 items-center">
+          <Link to={backTo} className="btn-primary">
+            {backLabel}
+          </Link>
+          {!!session?.held_back && strategy !== 'catch_up' && (
+            <button onClick={studyMore} className="btn-secondary text-sm">
+              Study more ({session.held_back} waiting)
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -313,7 +381,8 @@ export default function ReviewPage() {
 
       {!isFlipped && (
         <p className="text-center text-sm text-gray-400">
-          Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Space</kbd> or tap card to reveal
+          Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Space</kbd> or tap card to reveal ·{' '}
+          <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">R</kbd> to listen
         </p>
       )}
     </div>

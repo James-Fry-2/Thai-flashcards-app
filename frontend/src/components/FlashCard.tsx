@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { Card, FlagTarget } from '../types'
 import api from '../services/api'
 import CompoundBreakdown from './CompoundBreakdown'
+import SpeakButton from './SpeakButton'
 
 interface Props {
   card: Card
@@ -57,7 +58,10 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
           className="absolute inset-0 card flex flex-col items-center justify-center gap-3 backface-hidden"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          <p className="text-5xl font-bold thai text-gray-900">{card.thai}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-5xl font-bold thai text-gray-900">{card.thai}</p>
+            <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} size={20} />
+          </div>
           {card.romanization && (
             <p className="text-lg text-gray-400">{card.romanization}</p>
           )}
@@ -132,10 +136,22 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
             </div>
           )}
 
+          <div className="flex items-center gap-2">
+            <span className="thai text-xl text-gray-500">{card.thai}</span>
+            <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} showSlow />
+          </div>
           <p className="text-3xl font-semibold text-gray-900">{card.english}</p>
           {card.example_thai && (
             <div className="text-center mt-2 border-t border-gray-100 pt-3 w-full">
-              <p className="thai text-base text-gray-700">{card.example_thai}</p>
+              <p className="thai text-base text-gray-700">
+                {card.example_thai}
+                <SpeakButton
+                  source={{ kind: 'card', cardId: card.id, field: 'example' }}
+                  thai={card.example_thai}
+                  size={14}
+                  className="ml-1"
+                />
+              </p>
               <p className="text-sm text-gray-400 mt-1">{card.example_english}</p>
             </div>
           )}

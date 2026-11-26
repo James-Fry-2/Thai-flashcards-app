@@ -18,6 +18,9 @@ from .practice import PracticeSession, PracticeAttempt, PracticeOptionLog
 from .card_flag import CardFlag
 from .card_override import CardOverride
 from .card_correction_event import CardCorrectionEvent
+from .reader_known_word import ReaderKnownWord
+from .generated_text import GeneratedText
+from .tts_usage import TTSUsage
 
 __all__ = [
     "Base",
@@ -48,4 +51,7 @@ __all__ = [
     "CardFlag",
     "CardOverride",
     "CardCorrectionEvent",
+    "ReaderKnownWord",
+    "GeneratedText",
+    "TTSUsage",
 ]

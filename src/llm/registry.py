@@ -11,6 +11,8 @@ class LLMTask(str, Enum):
     CARD_TAGGING = "card_tagging"
     COMPOUND_BREAKDOWN = "compound_breakdown"
     TRANSLATION_VERIFY = "translation_verify"
+    READING_GENERATION = "reading_generation"
+    READING_CHECK = "reading_check"
 
 
 _registry: Dict[LLMTask, LLMProvider] = {}
@@ -56,6 +58,16 @@ def register_providers(settings) -> None:
             "provider": settings.translation_verify_provider,
             "model": settings.translation_verify_model,
             "max_tokens": 512,
+        },
+        LLMTask.READING_GENERATION: {
+            "provider": settings.reading_generation_provider,
+            "model": settings.reading_generation_model,
+            "max_tokens": 16000,
+        },
+        LLMTask.READING_CHECK: {
+            "provider": settings.reading_check_provider,
+            "model": settings.reading_check_model,
+            "max_tokens": 16000,
         },
     }
 

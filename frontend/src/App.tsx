@@ -14,6 +14,9 @@ import TriagePage from './pages/TriagePage'
 import SplitReviewPage from './pages/SplitReviewPage'
 import BookChaptersPage from './pages/BookChaptersPage'
 import BooksPage from './pages/BooksPage'
+import ReadingListPage from './pages/ReadingListPage'
+import ReaderPage from './pages/ReaderPage'
+import TextReaderPage from './pages/TextReaderPage'
 
 export default function App() {
   return (
@@ -34,6 +37,9 @@ export default function App() {
         <Route path="/topics/:topicId/review" element={<ReviewPage />} />
         <Route path="/review/library" element={<ReviewPage />} />
         <Route path="/practice" element={<PracticePage />} />
+        <Route path="/read" element={<ReadingListPage />} />
+        <Route path="/read/texts/:textId" element={<TextReaderPage />} />
+        <Route path="/read/:uploadId/:pageIndex" element={<ReaderPage />} />
         <Route path="/quiz" element={<PracticePage restrictToMc />} />
         <Route path="/at-risk" element={<AtRiskPage />} />
         <Route path="/at-risk/review" element={<ReviewPage />} />

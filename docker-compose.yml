@@ -10,6 +10,10 @@ services:
     environment:
       DATABASE_URL: sqlite+aiosqlite:////data/dek_kard.db
       MEDIA_DIR: /data/media
+      # Keep downloaded models in ./data so rebuilding the container doesn't
+      # re-download them (embedding model ~470 MB, WordNet ~22 MB).
+      HF_HOME: /data/cache/huggingface
+      NLTK_DATA: /data/cache/nltk_data
       # IRONOCR_URL: http://ironocr:5050  # enable once IronOCR has a valid deployment license
     restart: unless-stopped
     healthcheck:

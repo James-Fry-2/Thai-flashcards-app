@@ -151,6 +151,10 @@ export interface VerifyTranslationResponse {
 export interface UserPreferences {
   romanization_display: 'source' | 'paiboon' | 'rtgs' | 'ipa'
   romanization_fallback: 'paiboon' | 'rtgs' | 'ipa' | 'none'
+  daily_new_limit: number
+  daily_review_limit: number
+  tts_autoplay_on_reveal: boolean
+  tts_default_speed: 'normal' | 'slow'
   updated_at: string
 }
 
@@ -376,10 +380,27 @@ export interface SimilarCard {
   similarity: number
 }
 
+export interface DailyBudget {
+  new_limit: number
+  review_limit: number
+  new_done: number
+  reviews_done: number
+  new_remaining: number
+  review_remaining: number
+  review_due: number
+  catch_up: boolean
+  catch_up_days: number
+  extended: boolean
+}
+
 export interface DueSummary {
   total_due: number
   due_today: number
   new_cards: number
+  learning_due: number
+  to_do_today: number
+  today_breakdown: { learning: number; reviews: number; new: number }
+  today: DailyBudget
   overdue_by_7d: number
   overdue_by_30d: number
   by_deck: { deck_id: number; deck_name: string; due_count: number }[]
@@ -676,4 +697,123 @@ export interface CorrectionEvent {
   applied_from_event_id: number | null
   reverts_event_id: number | null
   created_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Read & mine mode
+// ---------------------------------------------------------------------------
+
+export type WordStatus = 'known' | 'learning' | 'new' | 'unknown'
+
+export interface ReadingStats {
+  thai_words: number
+  counts: Record<WordStatus, number>
+  known_pct: number | null
+  unknown_unique: number
+}
+
+export interface ReadableUpload extends ReadingStats {
+  upload_id: number
+  title: string
+  book_id: number | null
+  book_title: string | null
+  filename: string
+  pages: number
+}
+
+export interface ReadingSegment {
+  text: string
+  status?: WordStatus
+  card_id?: number
+}
+
+export interface ReadingPage {
+  upload_id: number
+  title: string
+  book_title: string | null
+  page_index: number
+  page_number: number
+  page_count: number
+  prev_page: number | null
+  next_page: number | null
+  lines: ReadingSegment[][]
+  stats: ReadingStats
+}
+
+export interface WordLookup {
+  thai: string
+  romanization: string | null
+  glosses: { gloss: string; source: string }[]
+  card: { id: number; english: string; deck_id: number } | null
+  marked_known: boolean
+}
+
+export type GeneratedKind = 'dialogue' | 'sentences'
+
+export interface GeneratedLine {
+  speaker: string
+  word: string
+  thai: string
+  english: string
+  /** In the scheme chosen in Settings. */
+  romanization?: string | null
+  fixed?: boolean
+  segments: ReadingSegment[]
+}
+
+export interface LLMCall {
+  step: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost: number | null
+}
+
+export interface TextUsage {
+  calls: LLMCall[]
+  total_cost: number | null
+  input_tokens: number
+  output_tokens: number
+  /** The same token counts re-priced on other models (rough guide). */
+  estimates: { model: string; label: string; cost: number }[]
+}
+
+export interface GeneratedText {
+  id: number
+  kind: GeneratedKind
+  title: string
+  scope: 'topic' | 'upload'
+  scope_id: number
+  scope_label: string | null
+  target_words: string[]
+  check: {
+    checked: boolean
+    fixed: number
+    notes: { index: number; note: string }[]
+    /** The checker found the text unnatural as a whole and rewrote it. */
+    rewritten?: boolean
+    problem?: string
+    /** Hard words replaced in an automatic simplify pass. */
+    simplified?: string[]
+  } | null
+  usage: TextUsage | null
+  created_at: string
+  lines: GeneratedLine[]
+  stats: ReadingStats
+}
+
+export interface GeneratedTextSummary extends ReadingStats {
+  id: number
+  kind: GeneratedKind
+  title: string
+  scope_label: string | null
+  lines: number
+  checked: boolean
+  cost: number | null
+  created_at: string
+}
+
+export interface ReadingSources {
+  topics: { id: number; name: string; card_count: number }[]
+  chapters: { upload_id: number; title: string; book_title: string | null; card_count: number }[]
 }

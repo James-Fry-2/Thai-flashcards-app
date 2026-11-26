@@ -1,6 +1,6 @@
 import { useQuery } from 'react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Zap, BookOpen, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Zap, BookOpen, AlertTriangle, CheckCircle, LifeBuoy, Plus } from 'lucide-react'
 import XPBar from '../components/XPBar'
 import StreakBadge from '../components/StreakBadge'
 import InsightsPanel from '../components/InsightsPanel'
@@ -23,11 +23,15 @@ export default function DashboardPage() {
     api.get('/review/summary').then((r) => r.data)
   )
 
-  function startLibrarySession(strategy: 'due' | 'at_risk' | 'mixed') {
-    navigate('/review/library', { state: { strategy } })
+  function startLibrarySession(strategy: 'due' | 'at_risk' | 'mixed' | 'catch_up', extend = false) {
+    navigate('/review/library', { state: { strategy, extend } })
   }
 
-  const totalDue = summary?.total_due ?? 0
+  const toDoToday = summary?.to_do_today ?? 0
+  const today = summary?.today
+  const catchUp = today?.catch_up ?? false
+  // Due cards that today's limits are holding back ("Study more" can reach them).
+  const moreAvailable = summary ? summary.total_due - toDoToday : 0
 
   return (
     <div className="space-y-6">
@@ -43,31 +47,58 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Catch-up: backlog bigger than one day's limit */}
+      {catchUp && today && (
+        <div className="card border-amber-200 bg-amber-50 space-y-3">
+          <div className="flex items-start gap-3">
+            <LifeBuoy size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold text-amber-900">Catch-up mode</p>
+              <p className="text-sm text-amber-800">
+                {today.review_due} reviews have piled up. You don&apos;t need to clear them in one go: do a
+                short catch-up session each day and you&apos;ll be back on track in about{' '}
+                {today.catch_up_days} {today.catch_up_days === 1 ? 'day' : 'days'}. New cards are paused
+                until then.
+              </p>
+              <p className="text-xs text-amber-700">
+                Catch-up shows the cards you&apos;re most likely to still remember first, so each session
+                saves as many as possible.
+              </p>
+            </div>
+          </div>
+          <button onClick={() => startLibrarySession('catch_up')} className="btn-primary flex items-center gap-2">
+            <LifeBuoy size={15} />
+            Catch up (30 cards)
+          </button>
+        </div>
+      )}
+
       {/* Today's Review */}
-      {totalDue > 0 ? (
+      {toDoToday > 0 ? (
         <div className="card border-brand-100 bg-brand-50 space-y-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-brand-700">{totalDue}</span>
-                <span className="text-brand-600 font-medium">cards to review today</span>
+                <span className="text-5xl font-bold text-brand-700">{toDoToday}</span>
+                <span className="text-brand-600 font-medium">cards for today</span>
               </div>
               {summary && (
                 <div className="flex gap-4 mt-2 text-sm flex-wrap">
+                  {summary.today_breakdown.learning > 0 && (
+                    <span className="text-gray-500">
+                      <span className="font-medium text-gray-700">{summary.today_breakdown.learning}</span> learning
+                    </span>
+                  )}
                   <span className="text-gray-500">
-                    <span className="font-medium text-gray-700">{summary.new_cards}</span> new
+                    <span className="font-medium text-gray-700">{summary.today_breakdown.reviews}</span> reviews
                   </span>
                   <span className="text-gray-500">
-                    <span className="font-medium text-gray-700">{summary.due_today}</span> due
-                  </span>
-                  <span className={summary.overdue_by_7d > 0 ? 'text-amber-600' : 'text-gray-400'}>
-                    <span className="font-medium">{summary.overdue_by_7d}</span> overdue &gt;7d
-                  </span>
-                  <span className={summary.overdue_by_30d > 0 ? 'text-red-600' : 'text-gray-400'}>
-                    <span className="font-medium">{summary.overdue_by_30d}</span> overdue &gt;30d
+                    <span className="font-medium text-gray-700">{summary.today_breakdown.new}</span> new
+                    {catchUp && <span className="text-amber-600"> (paused)</span>}
                   </span>
                 </div>
               )}
+              {today && <DailyProgress today={today} />}
             </div>
           </div>
 
@@ -108,7 +139,7 @@ export default function DashboardPage() {
                       className="text-xs text-gray-500 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
                     >
                       <Zap size={11} />
-                      {d.name} ({d.due_count})
+                      {d.name}
                     </Link>
                   ))}
               </div>
@@ -120,27 +151,42 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-gray-400 mb-1.5">Or study by topic</p>
               <div className="flex gap-1.5 flex-wrap">
-                {dueTopics.map((t) => {
-                  const count = (t.due_count ?? 0) + (t.new_count ?? 0)
-                  return (
-                    <Link
-                      key={t.id}
-                      to={`/topics/${t.id}/review`}
-                      className="text-xs text-gray-500 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                    >
-                      <Zap size={11} />
-                      {t.name} ({count})
-                    </Link>
-                  )
-                })}
+                {dueTopics.map((t) => (
+                  <Link
+                    key={t.id}
+                    to={`/topics/${t.id}/review`}
+                    className="text-xs text-gray-500 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Zap size={11} />
+                    {t.name}
+                  </Link>
+                ))}
               </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="card bg-green-50 border-green-100 flex items-center gap-3">
-          <CheckCircle size={20} className="text-green-500 shrink-0" />
-          <p className="font-medium text-green-700">All caught up. Nothing due today.</p>
+        <div className="card bg-green-50 border-green-100 space-y-3">
+          <div className="flex items-center gap-3">
+            <CheckCircle size={20} className="text-green-500 shrink-0" />
+            <p className="font-medium text-green-700">
+              {summary && summary.today.new_done + summary.today.reviews_done > 0
+                ? `Done for today: ${summary.today.reviews_done} reviews and ${summary.today.new_done} new cards. Nice work.`
+                : 'All caught up. Nothing due today.'}
+            </p>
+          </div>
+          <Link to="/read" className="text-sm text-green-700 underline underline-offset-2 hover:text-green-800 block">
+            Read something with the words you know →
+          </Link>
+          {moreAvailable > 0 && !catchUp && (
+            <button
+              onClick={() => startLibrarySession('due', true)}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+            >
+              <Plus size={13} />
+              Study more anyway
+            </button>
+          )}
         </div>
       )}
 
@@ -164,5 +210,15 @@ export default function DashboardPage() {
 
       <InsightsPanel />
     </div>
+  )
+}
+
+function DailyProgress({ today }: { today: NonNullable<DueSummary['today']> }) {
+  const done = today.reviews_done + today.new_done
+  if (done === 0) return null
+  return (
+    <p className="text-xs text-gray-400 mt-1">
+      Done so far today: {today.reviews_done} reviews, {today.new_done} new
+    </p>
   )
 }

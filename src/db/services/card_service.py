@@ -161,29 +161,6 @@ async def delete_card(db: AsyncSession, card: Card) -> None:
     await db.flush()
 
 
-async def get_due_cards(
-    db: AsyncSession, deck_id: int, limit: int = 20, direction: str = "th_to_en"
-) -> List[tuple[Card, CardSchedule]]:
-    """Return up to `limit` due or new cards for review, ordered by due date."""
-    now = datetime.now(timezone.utc)
-    result = await db.execute(
-        select(Card, CardSchedule)
-        .join(CardSchedule, CardSchedule.card_id == Card.id)
-        .where(
-            Card.deck_id == deck_id,
-            CardSchedule.direction == direction,
-            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
-        )
-        .order_by(
-            # New cards last (learn review-due cards first)
-            (CardSchedule.fsrs_state == "new").asc(),
-            CardSchedule.fsrs_due.asc(),
-        )
-        .limit(limit)
-    )
-    return [(row[0], row[1]) for row in result.all()]
-
-
 async def get_or_create_tag(db: AsyncSession, name: str) -> Tag:
     from src.db.services import embedding_service
     name = name.strip().lower()
@@ -204,52 +181,6 @@ async def add_tag_to_card(db: AsyncSession, card_id: int, tag_name: str) -> None
     if not existing:
         db.add(CardTag(card_id=card_id, tag_id=tag.id))
         await db.flush()
-
-
-async def get_due_cards_for_topic(
-    db: AsyncSession, topic_id: int, limit: int = 20, direction: str = "th_to_en"
-) -> List[tuple[Card, CardSchedule]]:
-    """Return up to `limit` due or new cards in a topic (across all decks), ordered by due date."""
-    from src.db.models.topic import CardTopic
-    now = datetime.now(timezone.utc)
-    result = await db.execute(
-        select(Card, CardSchedule)
-        .join(CardTopic, CardTopic.card_id == Card.id)
-        .join(CardSchedule, CardSchedule.card_id == Card.id)
-        .where(
-            CardTopic.topic_id == topic_id,
-            CardSchedule.direction == direction,
-            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
-        )
-        .order_by(
-            (CardSchedule.fsrs_state == "new").asc(),
-            CardSchedule.fsrs_due.asc(),
-        )
-        .limit(limit)
-    )
-    return [(row[0], row[1]) for row in result.all()]
-
-
-async def get_due_cards_for_upload(
-    db: AsyncSession, upload_id: int, limit: int = 200, direction: str = "th_to_en"
-) -> List[tuple[Card, CardSchedule]]:
-    """Due or new cards whose source is a specific upload (chapter_child), ordered by due date."""
-    now = datetime.now(timezone.utc)
-    result = await db.execute(
-        select(Card, CardSchedule)
-        .join(CardSchedule, CardSchedule.card_id == Card.id)
-        .where(
-            Card.source_upload_id == upload_id,
-            CardSchedule.direction == direction,
-            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
-        )
-        .order_by(
-            (CardSchedule.fsrs_state == "new").asc(),
-            CardSchedule.fsrs_due.asc(),
-        )
-        .limit(limit)
-    )
-    return [(row[0], row[1]) for row in result.all()]
 
 
 async def get_upload_card_counts(
@@ -292,27 +223,6 @@ async def get_upload_card_counts(
     }
 
 
-async def get_due_cards_library_wide(
-    db: AsyncSession, limit: int = 50, direction: str = "th_to_en"
-) -> List[tuple[Card, CardSchedule]]:
-    """Due or new cards across the whole library, ordered by due date (new cards last)."""
-    now = datetime.now(timezone.utc)
-    result = await db.execute(
-        select(Card, CardSchedule)
-        .join(CardSchedule, CardSchedule.card_id == Card.id)
-        .where(
-            CardSchedule.direction == direction,
-            (CardSchedule.fsrs_due <= now) | (CardSchedule.fsrs_state == "new"),
-        )
-        .order_by(
-            (CardSchedule.fsrs_state == "new").asc(),
-            CardSchedule.fsrs_due.asc(),
-        )
-        .limit(limit)
-    )
-    return [(row[0], row[1]) for row in result.all()]
-
-
 async def get_at_risk_card_pairs(
     db: AsyncSession,
     limit: int = 20,
@@ -353,6 +263,14 @@ async def get_due_summary(db: AsyncSession) -> dict:
         select(func.count(CardSchedule.id))
         .where(
             CardSchedule.fsrs_state != "new",
+            CardSchedule.fsrs_due <= now,
+        )
+    ) or 0
+
+    learning_due = await db.scalar(
+        select(func.count(CardSchedule.id))
+        .where(
+            CardSchedule.fsrs_state.in_(("learning", "relearning")),
             CardSchedule.fsrs_due <= now,
         )
     ) or 0
@@ -419,6 +337,7 @@ async def get_due_summary(db: AsyncSession) -> dict:
         "total_due": due_today + new_count,
         "due_today": due_today,
         "new_cards": new_count,
+        "learning_due": learning_due,
         "overdue_by_7d": overdue_7d,
         "overdue_by_30d": overdue_30d,
         "by_deck": by_deck,

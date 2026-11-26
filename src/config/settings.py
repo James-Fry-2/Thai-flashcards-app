@@ -26,6 +26,25 @@ class Settings(BaseSettings):
     compound_breakdown_model: str = "claude-haiku-4-5-20251001"
     translation_verify_provider: str = "claude"
     translation_verify_model: str = "claude-haiku-4-5-20251001"
+    # Generated reading texts (dialogues / example sentences) and the
+    # second pass that checks them for natural Thai and accurate English.
+    reading_generation_provider: str = "claude"
+    reading_generation_model: str = "claude-opus-5-5"
+    reading_check_provider: str = "claude"
+    reading_check_model: str = "claude-opus-5-5"
+
+    # Text-to-speech (Thai audio). Leave AZURE_SPEECH_KEY empty to turn it
+    # off: the audio endpoints then return 503 and the browser's own voice
+    # is used instead. Audio is cached under MEDIA_DIR/tts, so each phrase
+    # is only paid for once.
+    tts_provider: str = "azure"
+    azure_speech_key: str = ""
+    azure_speech_region: str = "southeastasia"
+    tts_voice_female: str = "th-TH-PremwadeeNeural"
+    tts_voice_male: str = "th-TH-NiwatNeural"
+    tts_slow_rate: str = "-30%"           # SSML prosody rate for "slow" playback
+    tts_max_chars: int = 500              # longer text is refused (one line / sentence, not a page)
+    tts_price_per_million_chars: float = 16.0  # Azure Neural pay-as-you-go, for the usage estimate
 
     # Embeddings
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

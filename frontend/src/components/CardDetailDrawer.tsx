@@ -18,6 +18,7 @@ import type {
   CorrectionEvent,
 } from '../types'
 import CompoundBreakdown from './CompoundBreakdown'
+import SpeakButton from './SpeakButton'
 
 interface Props {
   cardId: number | null
@@ -310,7 +311,10 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
             <div className="flex-1 min-w-0">
               {card ? (
                 <>
-                  <p className="thai text-2xl font-medium">{card.thai}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="thai text-2xl font-medium">{card.thai}</p>
+                    <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} showSlow />
+                  </div>
                   <p className="text-sm text-gray-500 mt-0.5">{card.english}</p>
                   {card.romanization && (
                     <p className="text-xs text-gray-400 mt-0.5">{card.romanization}</p>
@@ -430,7 +434,15 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                     Example
                   </h3>
                   {card.example_thai && (
-                    <p className="thai text-sm text-gray-700">{card.example_thai}</p>
+                    <p className="thai text-sm text-gray-700">
+                      {card.example_thai}
+                      <SpeakButton
+                        source={{ kind: 'card', cardId: card.id, field: 'example' }}
+                        thai={card.example_thai}
+                        size={14}
+                        className="ml-1"
+                      />
+                    </p>
                   )}
                   {card.example_english && (
                     <p className="text-sm text-gray-500 mt-0.5">{card.example_english}</p>

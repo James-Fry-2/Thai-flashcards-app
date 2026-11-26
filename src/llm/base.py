@@ -15,6 +15,13 @@ class LLMResponse:
     input_tokens: int
     output_tokens: int
     model: str
+    # Prompt-cache tokens (billed at 1.25x / 0.1x input). Not every provider reports them.
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+
+
+class LLMRefusal(Exception):
+    """The model declined the request (stop_reason == "refusal")."""
 
 
 class LLMProvider(ABC):
