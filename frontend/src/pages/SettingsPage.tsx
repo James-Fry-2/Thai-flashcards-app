@@ -19,6 +19,14 @@ const DISPLAY_OPTIONS: { value: UserPreferences['romanization_display']; label: 
   { value: 'ipa', label: 'IPA', description: 'International Phonetic Alphabet' },
 ]
 
+// Card-face fonts (brand/BRAND-SYSTEM.md §3). Values match data-card-font in brand/tokens.css.
+const CARD_FONT_OPTIONS: { value: UserPreferences['card_font']; label: string; family: string; description: string }[] = [
+  { value: 'learner', label: 'Learner', family: "'Noto Sans Thai Looped'", description: 'Looped letters, easiest to tell apart while you learn' },
+  { value: 'classic', label: 'Classic', family: "'Sarabun'", description: 'Looped, like official documents and many textbooks' },
+  { value: 'realworld', label: 'Real-world', family: "'Anuphan'", description: 'Loopless, like signs, menus and websites' },
+  { value: 'handwriting', label: 'Handwriting', family: "'Itim'", description: 'Like notes written by hand' },
+]
+
 const FALLBACK_OPTIONS: { value: UserPreferences['romanization_fallback']; label: string; description: string }[] = [
   { value: 'paiboon', label: 'Paiboon+', description: 'Fall back to Paiboon+ when the display scheme is empty' },
   { value: 'rtgs', label: 'RTGS', description: 'Fall back to RTGS when the display scheme is empty' },
@@ -84,7 +92,7 @@ export default function SettingsPage() {
       <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
         <div>
           <h2 className="text-base font-semibold text-gray-900 mb-0.5">Daily limits</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             Keep each day&apos;s review a manageable size. Cards you&apos;re part-way through learning are
             always shown. The day resets at 4am.
           </p>
@@ -100,14 +108,14 @@ export default function SettingsPage() {
               type="number"
               min={0}
               max={200}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={newLimit}
               disabled={update.isLoading}
               onChange={(e) => setNewLimit(e.target.value)}
               onBlur={() => saveLimit('daily_new_limit', newLimit)}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
             />
-            <p className="text-xs text-gray-400">0–200. Rule of thumb: daily reviews settle at about 10× this number.</p>
+            <p className="text-xs text-gray-600">0–200. Rule of thumb: daily reviews settle at about 10× this number.</p>
           </div>
           <div className="space-y-2">
             <label htmlFor="daily-review" className="block text-sm font-medium text-gray-700">
@@ -118,14 +126,14 @@ export default function SettingsPage() {
               type="number"
               min={10}
               max={2000}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               value={reviewLimit}
               disabled={update.isLoading}
               onChange={(e) => setReviewLimit(e.target.value)}
               onBlur={() => saveLimit('daily_review_limit', reviewLimit)}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
             />
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-600">
               10–2000. If more than this are due, catch-up mode pauses new cards until you&apos;re back on track.
             </p>
           </div>
@@ -134,8 +142,46 @@ export default function SettingsPage() {
 
       <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
         <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-0.5">Thai card font</h2>
+          <p className="text-sm text-gray-600">
+            The typeface for Thai on your cards. Looped letters are easier to tell apart when you&apos;re
+            starting out. Switch to Real-world when you want to practise the letter shapes you&apos;ll see in Thailand.
+          </p>
+        </div>
+
+        <div role="radiogroup" aria-label="Thai card font" className="grid grid-cols-2 gap-3">
+          {CARD_FONT_OPTIONS.map((o) => {
+            const selected = prefs.card_font === o.value
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                disabled={update.isLoading}
+                onClick={() => update.mutate({ card_font: o.value })}
+                className={`text-left rounded-[14px] p-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 ${
+                  selected ? 'bg-brand-50 ring-2 ring-brand-700' : 'bg-white ring-1 ring-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <span className="block text-3xl leading-snug text-gray-900" style={{ fontFamily: o.family }} lang="th">
+                  บ ป ด ต
+                </span>
+                <span className="block text-sm font-medium text-gray-900 mt-1">
+                  {selected && <span aria-hidden="true">&#10003; </span>}
+                  {o.label}
+                </span>
+                <span className="block text-xs text-gray-600">{o.description}</span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+        <div>
           <h2 className="text-base font-semibold text-gray-900 mb-0.5">Audio</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             {tts?.configured ? (
               <>Thai audio uses Azure Neural voices. Each word or sentence is generated once and saved.</>
             ) : (
@@ -160,7 +206,7 @@ export default function SettingsPage() {
           </label>
           <select
             id="tts-speed"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             value={prefs.tts_default_speed}
             disabled={update.isLoading}
             onChange={(e) => update.mutate({ tts_default_speed: e.target.value as UserPreferences['tts_default_speed'] })}
@@ -168,25 +214,25 @@ export default function SettingsPage() {
             <option value="normal">Normal</option>
             <option value="slow">Slow</option>
           </select>
-          <p className="text-xs text-gray-400">Shift-click any speaker button to hear the other speed.</p>
+          <p className="text-xs text-gray-600">Shift-click any speaker button to hear the other speed.</p>
         </div>
 
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            className="mt-0.5 h-4 w-4 rounded border-gray-500 text-brand-700 focus:ring-brand-500"
             checked={prefs.tts_autoplay_on_reveal}
             disabled={update.isLoading}
             onChange={(e) => update.mutate({ tts_autoplay_on_reveal: e.target.checked })}
           />
           <span>
             <span className="block text-sm font-medium text-gray-700">Play the Thai when you reveal a card</span>
-            <span className="block text-xs text-gray-400">In review you can also press R to listen at any time.</span>
+            <span className="block text-xs text-gray-600">In review you can also press R to listen at any time.</span>
           </span>
         </label>
 
         {tts?.configured && (
-          <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+          <p className="text-xs text-gray-600 border-t border-gray-100 pt-4">
             This month: {tts.usage.month_chars.toLocaleString()} characters generated (about $
             {tts.usage.month_cost.toFixed(2)}). Azure&apos;s free tier covers 500,000 characters a month.
           </p>
@@ -196,7 +242,7 @@ export default function SettingsPage() {
       <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
         <div>
           <h2 className="text-base font-semibold text-gray-900 mb-0.5">Romanization scheme</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             All schemes are stored at ingestion time. Changing this setting instantly recomputes the
             display value for every card — no re-derivation.
           </p>
@@ -205,7 +251,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Display scheme</label>
           <select
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             value={prefs.romanization_display}
             disabled={update.isLoading}
             onChange={(e) =>
@@ -218,7 +264,7 @@ export default function SettingsPage() {
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-600">
             {DISPLAY_OPTIONS.find((o) => o.value === prefs.romanization_display)?.description}
           </p>
         </div>
@@ -226,7 +272,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Fallback scheme</label>
           <select
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             value={prefs.romanization_fallback}
             disabled={update.isLoading}
             onChange={(e) =>
@@ -239,13 +285,13 @@ export default function SettingsPage() {
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-600">
             Used when the display scheme is empty on a card.{' '}
             {FALLBACK_OPTIONS.find((o) => o.value === prefs.romanization_fallback)?.description}
           </p>
         </div>
 
-        <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+        <p className="text-xs text-gray-600 border-t border-gray-100 pt-4">
           Manual overrides (set per-card in the card drawer) always take precedence over these settings.
         </p>
       </section>

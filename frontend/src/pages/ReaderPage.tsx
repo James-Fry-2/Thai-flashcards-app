@@ -37,11 +37,11 @@ export default function ReaderPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [page])
 
-  if (isLoading) return <div className="text-center py-20 text-gray-400">Loading page…</div>
+  if (isLoading) return <div className="text-center py-20 text-gray-600">Loading page…</div>
   if (isError || !page) {
     return (
       <div className="text-center py-20 space-y-3">
-        <p className="text-gray-500">This page isn&apos;t available.</p>
+        <p className="text-gray-600">This page isn&apos;t available.</p>
         <Link to="/read" className="btn-secondary">Back to reading list</Link>
       </div>
     )
@@ -50,29 +50,29 @@ export default function ReaderPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 text-sm">
-        <Link to="/read" className="flex items-center gap-1 text-gray-400 hover:text-gray-600">
+        <Link to="/read" className="flex items-center gap-1 text-gray-600 hover:text-gray-600">
           <ArrowLeft size={14} /> Read
         </Link>
         <div className="text-center min-w-0">
           <span className="block font-medium text-gray-700 truncate">{page.title}</span>
-          {page.book_title && <span className="block text-xs text-gray-400 truncate">{page.book_title}</span>}
+          {page.book_title && <span className="block text-xs text-gray-600 truncate">{page.book_title}</span>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => goTo(page.prev_page)}
             disabled={page.prev_page == null}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+            className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30"
             aria-label="Previous page"
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-gray-500 tabular-nums">
+          <span className="text-gray-600 tabular-nums">
             {page.page_number} / {page.page_count}
           </span>
           <button
             onClick={() => goTo(page.next_page)}
             disabled={page.next_page == null}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+            className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-30"
             aria-label="Next page"
           >
             <ChevronRight size={18} />
@@ -132,7 +132,7 @@ export default function ReaderPage() {
               onStatus={(status) => setSelected((s) => (s ? { ...s, status } : s))}
             />
           ) : (
-            <div className="card text-sm text-gray-400 hidden lg:block">
+            <div className="card text-sm text-gray-600 hidden lg:block">
               Tap a Thai word to look it up. Underlined words aren&apos;t in your cards yet.
             </div>
           )}

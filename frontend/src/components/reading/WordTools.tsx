@@ -119,23 +119,23 @@ export function WordPanel({
             <p className="text-3xl font-thai text-gray-900">{selected.thai}</p>
             <SpeakButton source={{ kind: 'text', text: selected.thai }} thai={selected.thai} showSlow />
           </div>
-          {info?.romanization && <p className="text-sm text-gray-500 mt-0.5">{info.romanization}</p>}
+          {info?.romanization && <p className="text-sm text-gray-600 mt-0.5">{info.romanization}</p>}
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" aria-label="Close">
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-600 p-1" aria-label="Close">
           <X size={16} />
         </button>
       </div>
 
-      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+      <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
         <span className={`inline-block h-2 w-2 rounded-full ${STATUS_STYLE[status].dot}`} />
         {STATUS_STYLE[status].label}
       </span>
 
-      {isLoading && <p className="text-sm text-gray-400">Looking up…</p>}
+      {isLoading && <p className="text-sm text-gray-600">Looking up…</p>}
 
       {info?.card ? (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-gray-500">Your card</p>
+          <p className="text-xs font-medium text-gray-600">Your card</p>
           <p className="text-gray-800">{info.card.english}</p>
         </div>
       ) : (
@@ -143,7 +143,7 @@ export function WordPanel({
           <div className="space-y-3">
             {info.glosses.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-gray-500">Meanings</p>
+                <p className="text-xs font-medium text-gray-600">Meanings</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.glosses.map((g) => (
                     <button
@@ -161,11 +161,11 @@ export function WordPanel({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No dictionary entry. Type a meaning to add it.</p>
+              <p className="text-sm text-gray-600">No dictionary entry. Type a meaning to add it.</p>
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor="mine-english" className="text-xs font-medium text-gray-500">
+              <label htmlFor="mine-english" className="text-xs font-medium text-gray-600">
                 Card meaning
               </label>
               <input
@@ -173,7 +173,7 @@ export function WordPanel({
                 value={english}
                 onChange={(e) => setEnglish(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && english.trim() && addCard.mutate()}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -185,7 +185,7 @@ export function WordPanel({
               <Plus size={15} /> Add as card
             </button>
             {selected.context !== selected.thai && (
-              <p className="text-xs text-gray-400">This line is saved as the card&apos;s example.</p>
+              <p className="text-xs text-gray-600">This line is saved as the card&apos;s example.</p>
             )}
           </div>
         )

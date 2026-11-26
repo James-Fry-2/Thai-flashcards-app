@@ -1,4 +1,4 @@
-# Dek-Kard — run the prebuilt release image (no build step, no source checkout).
+# Baimai (formerly Dek-Kard) — run the prebuilt release image (no build step, no source checkout).
 #
 #   1. Put this file and `.env` (copied from .env.example, with ANTHROPIC_API_KEY set) in a folder
 #   2. docker compose up -d

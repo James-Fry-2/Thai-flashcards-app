@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Baimai app icon, dark">
+  <title>Baimai app icon, dark</title>
+  <rect width="1024" height="1024" fill="#211f1b"/>
+  <g transform="translate(142 142) scale(7.4)"><path fill="#3da35d" d="M50 95 C16 79 13 40 50 5 C87 40 84 79 50 95 Z"/>
+  <path fill="none" stroke="#1d8544" stroke-width="3.5" stroke-linecap="round" d="M50 89 V74"/>
+  <circle cx="39" cy="50" r="5.5" fill="#211f1b"/><circle cx="61" cy="50" r="5.5" fill="#211f1b"/>
+  <circle cx="41" cy="48" r="1.8" fill="#fff"/><circle cx="63" cy="48" r="1.8" fill="#fff"/>
+  <path fill="none" stroke="#211f1b" stroke-width="3.5" stroke-linecap="round" d="M42 63 Q50 70 58 63"/>
+  <ellipse cx="30" cy="60" rx="4.5" ry="3.2" fill="#f2aabb"/><ellipse cx="70" cy="60" rx="4.5" ry="3.2" fill="#f2aabb"/></g>
+</svg>

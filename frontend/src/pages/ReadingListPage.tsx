@@ -56,7 +56,7 @@ export default function ReadingListPage() {
     <div className="space-y-8 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold">Read</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-600 mt-1">
           Practise reading with dialogues and example sentences written around your own vocabulary. Words you know are
           highlighted; tap any word to look it up or add it as a card.
         </p>
@@ -64,7 +64,7 @@ export default function ReadingListPage() {
 
       <section className="card space-y-4 border-brand-100">
         <div className="flex items-center gap-2 font-semibold text-gray-900">
-          <Sparkles size={16} className="text-brand-600" /> Create something to read
+          <Sparkles size={16} className="text-brand-700" /> Create something to read
         </div>
 
         <div className="grid sm:grid-cols-2 gap-2">
@@ -81,7 +81,7 @@ export default function ReadingListPage() {
                 {o.icon}
                 {o.label}
               </span>
-              <span className="block text-xs text-gray-500 mt-0.5">{o.description}</span>
+              <span className="block text-xs text-gray-600 mt-0.5">{o.description}</span>
             </button>
           ))}
         </div>
@@ -95,7 +95,7 @@ export default function ReadingListPage() {
             value={source}
             disabled={generate.isLoading}
             onChange={(e) => setSource(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="">Choose a topic or chapter…</option>
             {sources && sources.topics.length > 0 && (
@@ -118,7 +118,7 @@ export default function ReadingListPage() {
               </optgroup>
             )}
           </select>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-600">
             Uses the words you&apos;re learning first. Claude writes the text, then a second pass checks it for
             natural Thai and accurate English.
           </p>
@@ -135,11 +135,11 @@ export default function ReadingListPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Your texts</h2>
+        <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Your texts</h2>
         {textsLoading ? (
-          <div className="card text-gray-400 text-sm">Loading…</div>
+          <div className="card text-gray-600 text-sm">Loading…</div>
         ) : texts.length === 0 ? (
-          <div className="card text-gray-500 text-sm">Nothing yet. Create your first dialogue above.</div>
+          <div className="card text-gray-600 text-sm">Nothing yet. Create your first dialogue above.</div>
         ) : (
           <div className="card divide-y divide-gray-100 p-0">
             {texts.map((t) => (
@@ -148,14 +148,14 @@ export default function ReadingListPage() {
                 onClick={() => navigate(`/read/texts/${t.id}`)}
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-4"
               >
-                <span className="text-gray-400 shrink-0">
+                <span className="text-gray-600 shrink-0">
                   {t.kind === 'dialogue' ? <MessagesSquare size={16} /> : <ListOrdered size={16} />}
                 </span>
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="font-medium text-gray-900 truncate">{t.title}</span>
-                    <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
-                      {!t.checked && <ShieldAlert size={12} className="text-amber-500" aria-label="Not checked" />}
+                    <span className="text-xs text-gray-600 shrink-0 flex items-center gap-1">
+                      {!t.checked && <ShieldAlert size={12} className="text-amber-700" aria-label="Not checked" />}
                       {t.scope_label} · {new Date(t.created_at).toLocaleDateString()}
                       {t.cost != null && <> · {formatCost(t.cost)}</>}
                     </span>
@@ -164,7 +164,7 @@ export default function ReadingListPage() {
                 </div>
                 <div className="w-14 text-right shrink-0">
                   <span className="text-lg font-semibold text-gray-800">{t.known_pct ?? 0}%</span>
-                  <span className="block text-[11px] text-gray-400 -mt-0.5">known</span>
+                  <span className="block text-[11px] text-gray-600 -mt-0.5">known</span>
                 </div>
               </button>
             ))}
@@ -206,14 +206,14 @@ function UploadedPages() {
 
   return (
     <details className="group" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary className="cursor-pointer text-sm font-semibold text-gray-500 uppercase tracking-wide select-none">
+      <summary className="cursor-pointer text-sm font-semibold text-gray-600 uppercase tracking-wide select-none">
         Your uploaded pages
       </summary>
       <div className="mt-3 space-y-4">
-        {isLoading && <div className="card text-gray-400 text-sm">Loading…</div>}
+        {isLoading && <div className="card text-gray-600 text-sm">Loading…</div>}
         {groups.map(([group, items]) => (
           <div key={group} className="space-y-1.5">
-            <p className="text-xs text-gray-400">{group}</p>
+            <p className="text-xs text-gray-600">{group}</p>
             <div className="card divide-y divide-gray-100 p-0">
               {items.map((u) => (
                 <button
@@ -224,7 +224,7 @@ function UploadedPages() {
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="text-sm text-gray-800 truncate">{u.title}</span>
-                      <span className="text-xs text-gray-400 shrink-0">
+                      <span className="text-xs text-gray-600 shrink-0">
                         {u.pages} {u.pages === 1 ? 'page' : 'pages'}
                       </span>
                     </div>

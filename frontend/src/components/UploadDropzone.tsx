@@ -61,18 +61,18 @@ export default function UploadDropzone({ onFile, disabled }: Props) {
         'border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors',
         isDragActive
           ? 'border-brand-500 bg-brand-50'
-          : 'border-gray-300 hover:border-brand-400 hover:bg-gray-50',
+          : 'border-gray-500 hover:border-brand-400 hover:bg-gray-50',
         disabled && 'opacity-50 cursor-not-allowed'
       )}
     >
       <input {...getInputProps()} />
-      <Upload className="mx-auto mb-3 text-gray-400" size={36} />
+      <Upload className="mx-auto mb-3 text-gray-600" size={36} />
       {isDragActive ? (
-        <p className="text-brand-600 font-medium">Drop it here…</p>
+        <p className="text-brand-700 font-medium">Drop it here…</p>
       ) : (
         <>
           <p className="font-medium text-gray-700">Drop your notes here</p>
-          <p className="text-sm text-gray-400 mt-1">PDF, JPG, PNG, WEBP, HEIC — max 20 MB</p>
+          <p className="text-sm text-gray-600 mt-1">PDF, JPG, PNG, WEBP, HEIC — max 20 MB</p>
         </>
       )}
     </div>

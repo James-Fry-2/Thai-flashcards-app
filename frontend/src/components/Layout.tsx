@@ -4,6 +4,10 @@ import { Home, Upload, Layers, Tag, AlertTriangle, Search, Loader2, Settings, Bo
 import { clsx } from 'clsx'
 import { useActiveUploads } from '../hooks/useActiveUploads'
 import { useTriageQueue } from '../hooks/useTriageQueue'
+import { useQuery } from 'react-query'
+import api from '../services/api'
+import type { UserPreferences } from '../types'
+import Bai from './Bai'
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -16,6 +20,18 @@ export default function Layout() {
   const triageCount = triageQueue
     ? triageQueue.counts.translation + triageQueue.counts.compound_gap + triageQueue.counts.open_flags
     : 0
+
+  // Apply the Thai card-font setting app-wide (brand/tokens.css reads data-card-font).
+  const { data: prefs } = useQuery<UserPreferences>(
+    'preferences',
+    () => api.get('/preferences/').then((r) => r.data),
+    { staleTime: 60_000 },
+  )
+  useEffect(() => {
+    const font = prefs?.card_font
+    if (font && font !== 'learner') document.documentElement.dataset.cardFont = font
+    else delete document.documentElement.dataset.cardFont
+  }, [prefs?.card_font])
 
   const onSearchPage = location.pathname === '/search'
   const urlQ = onSearchPage ? new URLSearchParams(location.search).get('q') ?? '' : ''
@@ -64,9 +80,14 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-6">
-        <span className="text-xl font-bold text-brand-600 thai">เด็กการ์ด</span>
-        <div className="flex gap-1 ml-4">
+      <nav className="bg-white border-b-2 border-gray-100 px-5 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <NavLink to="/dashboard" className="flex items-center gap-2 shrink-0" aria-label="Baimai home">
+          <Bai size={30} />
+          <span className="text-xl font-semibold text-brand-800" style={{ fontFamily: 'var(--bm-font-display)' }}>
+            baimai
+          </span>
+        </NavLink>
+        <div className="flex flex-wrap ml-1">
           <NavItem to="/dashboard" icon={<Home size={16} />} label="Dashboard" />
           <NavItem to="/decks" icon={<Layers size={16} />} label="Decks" />
           <NavItem to="/topics" icon={<Tag size={16} />} label="Topics" />
@@ -89,7 +110,7 @@ export default function Layout() {
           </NavLink>
         )}
         <div className="ml-auto relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
           <input
             ref={inputRef}
             type="text"
@@ -97,7 +118,7 @@ export default function Layout() {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="Search to study… ⌘K"
-            className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent w-56"
+            className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent w-36"
           />
         </div>
       </nav>
@@ -114,10 +135,10 @@ function NavItem({ to, icon, label, badge }: { to: string; icon: ReactNode; labe
       to={to}
       className={({ isActive }) =>
         clsx(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+          'flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
           isActive
             ? 'bg-brand-100 text-brand-700'
-            : 'text-gray-600 hover:bg-gray-100'
+            : 'text-gray-700 hover:bg-gray-100'
         )
       }
     >

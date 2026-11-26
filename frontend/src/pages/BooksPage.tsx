@@ -19,22 +19,22 @@ export default function BooksPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Books</h1>
-        <p className="text-gray-500 mt-1">Select a book to study its chapters.</p>
+        <p className="text-gray-600 mt-1">Select a book to study its chapters.</p>
       </div>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-gray-600">
           <Loader2 size={16} className="animate-spin" /> Loading…
         </div>
       )}
 
       {!isLoading && books.length === 0 && (
-        <div className="card text-center py-12 text-gray-400">
+        <div className="card text-center py-12 text-gray-600">
           <BookOpen size={32} className="mx-auto mb-3 opacity-40" />
           <p className="font-medium">No books imported yet.</p>
           <button
             onClick={() => navigate('/upload')}
-            className="mt-4 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+            className="mt-4 px-4 py-2 text-sm rounded-lg bg-brand-500 text-brand-950 hover:bg-brand-400"
           >
             Import a book
           </button>
@@ -91,18 +91,18 @@ function BookRow({ book }: { book: Upload }) {
       {/* Icon */}
       <div className="shrink-0">
         {isDone
-          ? <CheckCircle size={22} className="text-green-500" />
+          ? <CheckCircle size={22} className="text-green-700" />
           : isProcessing
-          ? <Loader2 size={22} className="text-brand-400 animate-spin" />
+          ? <Loader2 size={22} className="text-brand-700 animate-spin" />
           : book.status === 'failed'
-          ? <AlertCircle size={22} className="text-red-400" />
-          : <BookOpen size={22} className="text-amber-400" />}
+          ? <AlertCircle size={22} className="text-red-600" />
+          : <BookOpen size={22} className="text-amber-700" />}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-gray-900 truncate">{label}</p>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <p className="text-sm text-gray-600 mt-0.5">
           {isDone
             ? `${complete} of ${total} chapters · ${cards} cards`
             : isProcessing
@@ -117,7 +117,7 @@ function BookRow({ book }: { book: Upload }) {
       {isDone && (
         <button
           onClick={() => navigate(`/uploads/${book.id}/chapters`)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 shrink-0"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 text-brand-950 text-sm font-medium hover:bg-brand-400 shrink-0"
         >
           Select chapter
           <ArrowRight size={14} />
@@ -126,7 +126,7 @@ function BookRow({ book }: { book: Upload }) {
       {awaitingReview && (
         <button
           onClick={() => navigate(`/uploads/${book.id}/split-review`)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 shrink-0"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 shrink-0"
         >
           Review chapters
           <ArrowRight size={14} />
@@ -140,7 +140,7 @@ function BookRow({ book }: { book: Upload }) {
           className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border transition-colors shrink-0 ${
             confirming
               ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-              : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500'
+              : 'border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600'
           }`}
         >
           <Trash2 size={13} />

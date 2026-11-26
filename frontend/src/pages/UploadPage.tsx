@@ -125,7 +125,7 @@ export default function UploadPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Upload Notes</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-gray-600 mt-1">
           Upload Thai learning notes or import a whole book — cards are generated automatically.
         </p>
       </div>
@@ -136,8 +136,8 @@ export default function UploadPage() {
           onClick={() => setMode('single')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
             mode === 'single'
-              ? 'bg-brand-600 text-white border-brand-600'
-              : 'bg-white text-gray-600 border-gray-300 hover:border-brand-400'
+              ? 'bg-brand-500 text-brand-950 border-brand-600'
+              : 'bg-white text-gray-600 border-gray-500 hover:border-brand-400'
           }`}
         >
           <UploadIcon size={15} />
@@ -147,8 +147,8 @@ export default function UploadPage() {
           onClick={() => setMode('book')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
             mode === 'book'
-              ? 'bg-brand-600 text-white border-brand-600'
-              : 'bg-white text-gray-600 border-gray-300 hover:border-brand-400'
+              ? 'bg-brand-500 text-brand-950 border-brand-600'
+              : 'bg-white text-gray-600 border-gray-500 hover:border-brand-400'
           }`}
         >
           <BookOpen size={15} />
@@ -159,10 +159,10 @@ export default function UploadPage() {
       {/* Deck selector (shared) — required, since cards can't be generated without one */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Add cards to deck <span className="text-red-500">*</span>
+          Add cards to deck <span className="text-red-600">*</span>
         </label>
         <select
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm"
           value={selectedDeckId}
           onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : '')}
         >
@@ -176,7 +176,7 @@ export default function UploadPage() {
           ))}
         </select>
         {!selectedDeckId && (
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-600 mt-1">
             A deck is required — without one, cards can't be generated from your upload.
           </p>
         )}
@@ -242,12 +242,12 @@ function StatusDisplay({
           <span>
             Complete — <strong>{upload.cards_created}</strong> cards created
             {upload.ocr_engine_used && (
-              <span className="text-xs text-gray-400 ml-2">via {upload.ocr_engine_used}</span>
+              <span className="text-xs text-gray-600 ml-2">via {upload.ocr_engine_used}</span>
             )}
           </span>
         </div>
         {hasPageWarning && (
-          <p className="text-xs text-amber-600 ml-8">{upload.error_message}</p>
+          <p className="text-xs text-amber-700 ml-8">{upload.error_message}</p>
         )}
       </div>
     )
@@ -263,7 +263,7 @@ function StatusDisplay({
         <button
           onClick={onRetry}
           disabled={retrying}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-brand-950 hover:bg-brand-400 disabled:opacity-50"
         >
           <RefreshCw size={14} className={retrying ? 'animate-spin' : ''} />
           {retrying ? 'Retrying…' : 'Retry'}
@@ -284,7 +284,7 @@ function StatusDisplay({
         <Loader2 size={20} className="animate-spin" />
         <span>{stageLabel}</span>
         {showProgress && (
-          <span className="text-xs text-gray-400 ml-auto">
+          <span className="text-xs text-gray-600 ml-auto">
             {upload.pages_processed} / {upload.total_pages} pages
           </span>
         )}
@@ -350,11 +350,11 @@ function BookImportPanel({
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Book / source title <span className="text-red-500">*</span>
+          Book / source title <span className="text-red-600">*</span>
         </label>
         <input
           type="text"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm"
           placeholder="e.g. Thai for Beginners"
           value={sourceTitle}
           onChange={(e) => setSourceTitle(e.target.value)}
@@ -366,17 +366,17 @@ function BookImportPanel({
         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
           isDragActive
             ? 'border-brand-500 bg-brand-50'
-            : 'border-gray-300 hover:border-brand-400 hover:bg-gray-50'
+            : 'border-gray-500 hover:border-brand-400 hover:bg-gray-50'
         }`}
       >
         <input {...getInputProps()} />
-        <BookOpen className="mx-auto mb-2 text-gray-400" size={32} />
+        <BookOpen className="mx-auto mb-2 text-gray-600" size={32} />
         {isDragActive ? (
-          <p className="text-brand-600 font-medium">Drop PDFs here…</p>
+          <p className="text-brand-700 font-medium">Drop PDFs here…</p>
         ) : (
           <>
             <p className="font-medium text-gray-700">Drop PDF files here</p>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               One PDF → chapter detection &amp; review &nbsp;·&nbsp; Multiple PDFs → one chapter each
               &nbsp;·&nbsp; max {300} MB total
             </p>
@@ -391,7 +391,7 @@ function BookImportPanel({
               <span className="text-gray-700 truncate">{f.name}</span>
               <button
                 onClick={() => removeFile(i)}
-                className="ml-2 text-gray-400 hover:text-red-500 shrink-0"
+                className="ml-2 text-gray-600 hover:text-red-600 shrink-0"
               >
                 <Trash2 size={14} />
               </button>
@@ -403,7 +403,7 @@ function BookImportPanel({
       <button
         onClick={() => bookMutation.mutate()}
         disabled={!files.length || !sourceTitle.trim() || !selectedDeckId || bookMutation.isLoading}
-        className="w-full py-2 rounded-lg bg-brand-600 text-white font-medium text-sm hover:bg-brand-700 disabled:opacity-50"
+        className="w-full py-2 rounded-lg bg-brand-500 text-brand-950 font-medium text-sm hover:bg-brand-400 disabled:opacity-50"
       >
         {bookMutation.isLoading ? (
           <span className="flex items-center justify-center gap-2">
@@ -444,7 +444,7 @@ function BookParentStatus({
         <button
           onClick={onRetry}
           disabled={retrying}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-brand-500 text-brand-950 hover:bg-brand-400 disabled:opacity-50"
         >
           <RefreshCw size={14} className={retrying ? 'animate-spin' : ''} />
           {retrying ? 'Retrying…' : 'Retry'}
@@ -460,10 +460,10 @@ function BookParentStatus({
     return (
       <div className="space-y-3">
         <div className="flex items-start gap-3">
-          <BookOpen size={20} className="text-amber-500 mt-0.5 shrink-0" />
+          <BookOpen size={20} className="text-amber-700 mt-0.5 shrink-0" />
           <div>
             <p className="font-medium text-gray-800">Chapters detected — review required</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               <strong>{sourceLabel}</strong> · {boundaryCount} boundaries found
               {includeCount < boundaryCount && ` · ${includeCount} chapters to generate`}
             </p>
@@ -471,7 +471,7 @@ function BookParentStatus({
         </div>
         <button
           onClick={() => navigate(`/uploads/${upload.id}/split-review`)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 text-brand-950 text-sm font-medium hover:bg-brand-400"
         >
           Review &amp; confirm chapters
           <ArrowRight size={14} />
@@ -491,12 +491,12 @@ function BookParentStatus({
           <CheckCircle size={20} />
           <span>
             <strong>{sourceLabel}</strong> — {upload.cards_created_total ?? upload.cards_created} cards created
-            {total > 0 && <span className="text-xs text-gray-400 ml-2">({complete}/{total} chapters)</span>}
+            {total > 0 && <span className="text-xs text-gray-600 ml-2">({complete}/{total} chapters)</span>}
           </span>
         </div>
         <button
           onClick={() => navigate(`/uploads/${upload.id}/chapters`)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 text-brand-950 text-sm font-medium hover:bg-brand-400"
         >
           Study a chapter
           <ArrowRight size={14} />
@@ -514,14 +514,14 @@ function BookParentStatus({
         <span>
           <strong>{sourceLabel}</strong> — {stageLabel}
           {total > 0 && (
-            <span className="text-xs text-gray-400 ml-2">
+            <span className="text-xs text-gray-600 ml-2">
               {complete}/{total} chapters{failed > 0 ? `, ${failed} failed` : ''}
             </span>
           )}
         </span>
         {total > 1 && (
           <button
-            className="ml-auto text-gray-400 hover:text-gray-600"
+            className="ml-auto text-gray-600 hover:text-gray-600"
             onClick={() => setExpanded((v) => !v)}
           >
             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -562,7 +562,7 @@ function MyBooks({ currentUploadId }: { currentUploadId: number | null }) {
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">My Books</h2>
+      <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">My Books</h2>
       <ul className="space-y-2">
         {otherBooks.map((book) => {
           const label = book.source_title || book.filename
@@ -574,10 +574,10 @@ function MyBooks({ currentUploadId }: { currentUploadId: number | null }) {
 
           return (
             <li key={book.id} className="card flex items-center gap-3 py-3 px-4">
-              <BookOpen size={18} className={isDone ? 'text-green-500' : isPending ? 'text-brand-400' : 'text-gray-400'} />
+              <BookOpen size={18} className={isDone ? 'text-green-700' : isPending ? 'text-brand-700' : 'text-gray-600'} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-800 truncate">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 mt-0.5">
                   {isDone
                     ? `${complete}/${total} chapters · ${cards} cards`
                     : isPending
@@ -620,11 +620,11 @@ function ChapterList({ entries }: { entries: ChapterBoundary[] }) {
   const navigate = useNavigate()
 
   const statusIcon = (entry: ChapterBoundary) => {
-    if (entry.status === 'done') return <CheckCircle size={14} className="text-green-600" />
-    if (entry.status === 'failed') return <AlertCircle size={14} className="text-red-500" />
+    if (entry.status === 'done') return <CheckCircle size={14} className="text-green-700" />
+    if (entry.status === 'failed') return <AlertCircle size={14} className="text-red-600" />
     if (entry.status === 'processing' || entry.status === 'pending')
-      return <Loader2 size={14} className="text-brand-500 animate-spin" />
-    return <span className="w-3.5 h-3.5 rounded-full border border-gray-300 inline-block" />
+      return <Loader2 size={14} className="text-brand-700 animate-spin" />
+    return <span className="w-3.5 h-3.5 rounded-full border border-gray-500 inline-block" />
   }
 
   return (
@@ -638,12 +638,12 @@ function ChapterList({ entries }: { entries: ChapterBoundary[] }) {
             {statusIcon(entry)}
             <span className="truncate">{label}</span>
             {entry.status === 'done' && entry.cards_created != null && (
-              <span className="ml-auto text-xs text-gray-400 shrink-0">
+              <span className="ml-auto text-xs text-gray-600 shrink-0">
                 {entry.cards_created} cards
               </span>
             )}
             {entry.status === 'failed' && (
-              <span className="ml-auto text-xs text-red-400 shrink-0">failed</span>
+              <span className="ml-auto text-xs text-red-600 shrink-0">failed</span>
             )}
             {canStudy && (
               <button
@@ -656,7 +656,7 @@ function ChapterList({ entries }: { entries: ChapterBoundary[] }) {
               >
                 Study
                 {dueCount > 0 && (
-                  <span className="bg-brand-600 text-white rounded-full px-1.5 py-px text-[10px] leading-none">
+                  <span className="bg-brand-500 text-brand-950 rounded-full px-1.5 py-px text-[10px] leading-none">
                     {dueCount}
                   </span>
                 )}

@@ -7,6 +7,7 @@ import MCQuestion from '../components/MCQuestion'
 import FlashCard from '../components/FlashCard'
 import api from '../services/api'
 import type { Card, PracticeItem, PracticeOption, PracticeSession, PracticeSummary } from '../types'
+import Bai from '../components/Bai'
 
 type SessionState = 'loading' | 'practicing' | 'done'
 
@@ -16,11 +17,12 @@ interface MissedItem {
   rating?: number // recall_th_en
 }
 
+// Brand rule (brand/BRAND-SYSTEM.md §5): only Good is filled; Again carries a cross, never colour alone.
 const RATING_LABELS = [
-  { value: 1, label: 'Again', color: 'bg-red-500 hover:bg-red-600', key: '1' },
-  { value: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-600', key: '2' },
-  { value: 3, label: 'Good', color: 'bg-green-500 hover:bg-green-600', key: '3' },
-  { value: 4, label: 'Easy', color: 'bg-blue-500 hover:bg-blue-600', key: '4' },
+  { value: 1, label: 'Again', icon: '\u2715', color: 'grade grade-again', key: '1' },
+  { value: 2, label: 'Hard', icon: '', color: 'grade', key: '2' },
+  { value: 3, label: 'Good', icon: '\u2713', color: 'grade grade-good', key: '3' },
+  { value: 4, label: 'Easy', icon: '', color: 'grade', key: '4' },
 ]
 
 /** MCQuestion/FlashCard's props are exercise-agnostic and don't need most of
@@ -191,16 +193,16 @@ export default function PracticePage({ restrictToMc }: Props) {
   }, [state, currentItem, mcAnswered, isFlipped, handleChoose, handleRate])
 
   if (state === 'loading') {
-    return <div className="text-center py-20 text-gray-400">Loading practice session…</div>
+    return <div className="text-center py-20 text-gray-600">Loading practice session…</div>
   }
 
   if (state === 'done' && session) {
     return (
       <div className="max-w-lg mx-auto text-center py-16 space-y-6">
-        <div className="text-6xl">{missed.length === 0 ? '🎉' : '📝'}</div>
+        <Bai size={88} className="mx-auto" mood={missed.length === 0 ? 'happy' : 'thinking'} />
         <h2 className="text-2xl font-bold">Practice complete!</h2>
         {summary && (
-          <div className="text-gray-500 space-y-1">
+          <div className="text-gray-600 space-y-1">
             <p>{summary.total} cards practiced</p>
             {summary.binary_accuracy !== null && (
               <p>Multiple choice: {Math.round(summary.binary_accuracy * 100)}% correct</p>
@@ -222,16 +224,16 @@ export default function PracticePage({ restrictToMc }: Props) {
             {missed.map(({ item, chosenOption, rating }) => (
               <div key={item.card_id} className="text-sm bg-gray-50 rounded-lg px-3 py-2">
                 <span className="thai font-medium">{item.thai}</span>
-                <span className="text-gray-400"> — </span>
+                <span className="text-gray-600"> — </span>
                 <span className="text-green-700">
                   {item.exercise_type === 'mc_th_en'
                     ? item.payload.options?.find((o) => o.card_id === item.card_id)?.english
                     : item.english}
                 </span>
                 {chosenOption && (
-                  <span className="text-gray-400"> (you picked "{chosenOption.english}")</span>
+                  <span className="text-gray-600"> (you picked "{chosenOption.english}")</span>
                 )}
-                {rating !== undefined && <span className="text-gray-400"> (rated "Again")</span>}
+                {rating !== undefined && <span className="text-gray-600"> (rated "Again")</span>}
               </div>
             ))}
           </div>
@@ -248,7 +250,7 @@ export default function PracticePage({ restrictToMc }: Props) {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div className="flex items-center justify-between text-sm text-gray-400">
+      <div className="flex items-center justify-between text-sm text-gray-600">
         <Link to="/dashboard" className="flex items-center gap-1 hover:text-gray-600">
           <ArrowLeft size={14} />
           Dashboard
@@ -257,7 +259,7 @@ export default function PracticePage({ restrictToMc }: Props) {
           <span className="text-gray-600 font-medium block">
             {restrictToMc ? 'Quiz' : 'Practice'}
           </span>
-          <span className="text-xs text-gray-400">Practice · doesn't affect scheduling</span>
+          <span className="text-xs text-gray-600">Practice · doesn't affect scheduling</span>
         </div>
         <span>
           {currentIndex + 1} / {session.items.length}
@@ -292,7 +294,7 @@ export default function PracticePage({ restrictToMc }: Props) {
       </AnimatePresence>
 
       {currentItem.exercise_type === 'mc_th_en' && !mcAnswered && (
-        <p className="text-center text-sm text-gray-400">
+        <p className="text-center text-sm text-gray-600">
           Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">1</kbd>–
           <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">4</kbd> to answer
         </p>
@@ -304,13 +306,14 @@ export default function PracticePage({ restrictToMc }: Props) {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-4 gap-2"
         >
-          {RATING_LABELS.map(({ value, label, color, key }) => (
+          {RATING_LABELS.map(({ value, label, icon, color, key }) => (
             <button
               key={value}
-              className={`${color} text-white rounded-xl py-3 text-sm font-medium transition-colors`}
+              className={color}
               onClick={() => handleRate(value)}
             >
-              <span className="block text-xs opacity-70">[{key}]</span>
+              <span className="block text-xs font-normal">[{key}]</span>
+              {icon && <span aria-hidden="true">{icon} </span>}
               {label}
             </button>
           ))}
@@ -318,7 +321,7 @@ export default function PracticePage({ restrictToMc }: Props) {
       )}
 
       {currentItem.exercise_type === 'recall_th_en' && !isFlipped && (
-        <p className="text-center text-sm text-gray-400">
+        <p className="text-center text-sm text-gray-600">
           Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Space</kbd> or tap card to reveal
         </p>
       )}

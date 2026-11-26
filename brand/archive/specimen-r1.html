@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baimai &middot; colour and type specimen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Noto+Sans+Thai+Looped:wght@400;600&family=IBM+Plex+Sans+Thai+Looped:wght@400;600&family=Noto+Sans+Thai:wght@400;600&family=Sarabun:wght@400;600&family=Itim&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-50:#eafcef;--brand-100:#dcf4e3;--brand-200:#c1e3cb;--brand-300:#a1ceaf;--brand-400:#79b38c;--brand-500:#54996d;--brand-600:#2e7d4f;--brand-700:#1b6a3e;--brand-800:#04522c;--brand-900:#003b1e;--brand-950:#002712;
+  --marigold-50:#fff5e7;--marigold-100:#ffeaca;--marigold-200:#ffd18b;--marigold-300:#e8a317;--marigold-400:#d69500;--marigold-500:#b37b00;--marigold-600:#956600;--marigold-700:#775100;--marigold-800:#5b3d00;--marigold-900:#422b00;--marigold-950:#2c1b00;
+  --neutral-50:#f5f7f6;--neutral-100:#ebeeeb;--neutral-200:#d6dad7;--neutral-300:#bdc2be;--neutral-400:#9ea5a0;--neutral-500:#828a84;--neutral-600:#6c746e;--neutral-700:#545c56;--neutral-800:#3f4641;--neutral-900:#2d322e;--neutral-950:#1c201d;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Anuphan,system-ui,sans-serif;color:var(--neutral-900);background:var(--neutral-50);line-height:1.5}
+main{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+h1{font-size:32px;font-weight:600;margin:0 0 4px;color:var(--brand-800)}
+h2{font-size:20px;font-weight:600;margin:48px 0 6px}
+p.lede{color:var(--neutral-700);margin:0 0 8px;max-width:70ch}
+.note{font-size:13px;color:var(--neutral-700);max-width:70ch}
+.ramp{display:grid;grid-template-columns:110px repeat(11,1fr);gap:4px;align-items:stretch;margin:10px 0}
+.ramp .lbl{font-size:13px;font-weight:600;align-self:center}
+.sw{border-radius:6px;height:64px;padding:6px;font-size:11px;display:flex;flex-direction:column;justify-content:flex-end;font-variant-numeric:tabular-nums}
+.sw.anchor{outline:3px solid var(--neutral-900);outline-offset:2px}
+.pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:12px}
+.pair{border-radius:8px;padding:12px 14px;font-size:14px;border:1px solid var(--neutral-200)}
+.pair small{display:block;font-size:12px;opacity:.85}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+@media (max-width:760px){.modes{grid-template-columns:1fr}.ramp{grid-template-columns:70px repeat(11,1fr)}.sw span{display:none}}
+.screen{border-radius:14px;padding:20px}
+.screen.light{background:var(--neutral-50);border:1px solid var(--neutral-200)}
+.screen.dark{background:var(--neutral-950);color:var(--neutral-100)}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:14px}
+.chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+.card{border-radius:12px;padding:28px 20px;text-align:center}
+.light .card{background:#fff;border:1px solid var(--neutral-200)}
+.dark .card{background:var(--neutral-900)}
+.thai{font-family:'Noto Sans Thai Looped',sans-serif;font-size:44px;font-weight:600;line-height:1.3}
+.rom{font-size:14px;margin-top:4px}
+.btnrow{display:flex;gap:8px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.btn{font:inherit;font-size:14px;font-weight:600;border-radius:10px;padding:9px 16px;border:0}
+.status{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.status span{font-size:13px;padding:6px 10px;border-radius:8px}
+.fonts{display:grid;gap:10px;margin-top:12px}
+.font{background:#fff;border:1px solid var(--neutral-200);border-radius:10px;padding:14px 18px;display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:center}
+@media (max-width:760px){.font{grid-template-columns:1fr}}
+.font .name{font-size:14px;font-weight:600}
+.font .name small{display:block;font-weight:400;color:var(--neutral-700);font-size:12px}
+.font .sample{font-size:34px;line-height:1.35}
+.font .sample .s{font-size:18px;display:block;color:var(--neutral-700)}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>Baimai &middot; ใบไม้</h1>
+<p class="lede">Direction A, banana leaf with marigold. Every swatch is an 11-step OKLCH scale built with <code>palette.py</code>. The outlined swatch is the brand anchor. Ratios are WCAG 2.2 contrast, measured with the script, not estimated.</p>
+
+<h2>Scales</h2>
+<p class="note">Read each row left (lightest, 50) to right (darkest, 950). Surfaces use 50 to 200, borders 200 to 500, solid fills 500 to 700, and text 700 to 950.</p>
+<div id="ramps"></div>
+
+<h2>Text and fill pairs (light mode)</h2>
+<div class="pairs">
+  <div class="pair" style="background:#fff;color:var(--neutral-900)">Body text, neutral-900 on white<small>13.07:1 &middot; AA</small></div>
+  <div class="pair" style="background:#fff;color:var(--neutral-700)">Secondary text, neutral-700<small>6.90:1 &middot; AA</small></div>
+  <div class="pair" style="background:#fff;color:var(--neutral-600)">Muted text (minimum), neutral-600<small>4.82:1 &middot; AA</small></div>
+  <div class="pair" style="background:var(--brand-600);color:#fff;border-color:var(--brand-600)">White on brand-600 button<small>5.05:1 &middot; AA</small></div>
+  <div class="pair" style="background:#fff;color:var(--brand-700)">Link, brand-700 on white<small>6.61:1 &middot; AA</small></div>
+  <div class="pair" style="background:var(--brand-100);color:var(--brand-800);border-color:var(--brand-200)">Correct banner, brand-800 on brand-100<small>8.05:1 &middot; AA</small></div>
+  <div class="pair" style="background:var(--marigold-300);color:var(--marigold-950);border-color:var(--marigold-300)">Streak or XP, marigold-950 on marigold-300<small>7.66:1 &middot; AA (never white on marigold: 2.17:1)</small></div>
+  <div class="pair" style="background:#fff;color:#a21f1b">Danger text, #A21F1B on white<small>7.64:1 &middot; AA</small></div>
+  <div class="pair" style="background:#ffe8da;color:#6c3000">Warning, #6C3000 on #FFE8DA<small>8.64:1 &middot; AA</small></div>
+  <div class="pair" style="background:#e5edff;color:#2b3d81">Info (kram indigo), #2B3D81 on #E5EDFF<small>8.57:1 &middot; AA</small></div>
+</div>
+
+<h2>In use, light and dark</h2>
+<div class="modes">
+  <div class="screen light">
+    <div class="topbar"><span style="font-weight:600;color:var(--brand-700)">ใบไม้ Baimai</span><span class="chip" style="background:var(--marigold-300);color:var(--marigold-950)">7-day streak</span></div>
+    <div class="card">
+      <div class="thai">ใบไม้</div>
+      <div class="rom" style="color:var(--neutral-700)">bai mai &middot; leaf</div>
+      <div class="btnrow">
+        <button class="btn" style="background:#fff;color:#a21f1b;box-shadow:inset 0 0 0 1px var(--neutral-500)">&#10005; Again</button>
+        <button class="btn" style="background:#fff;color:var(--neutral-900);box-shadow:inset 0 0 0 1px var(--neutral-500)">Hard</button>
+        <button class="btn" style="background:var(--brand-600);color:#fff">&#10003; Good</button>
+      </div>
+    </div>
+    <div class="status">
+      <span style="background:var(--brand-100);color:var(--brand-800)">&#10003; Correct</span>
+      <span style="background:#ffe6e3;color:#820608">&#10005; Not quite</span>
+      <span style="background:#ffe8da;color:#6c3000">&#9888; Needs review</span>
+    </div>
+  </div>
+  <div class="screen dark">
+    <div class="topbar"><span style="font-weight:600;color:var(--brand-300)">ใบไม้ Baimai</span><span class="chip" style="background:var(--marigold-300);color:var(--marigold-950)">7-day streak</span></div>
+    <div class="card">
+      <div class="thai" style="color:var(--neutral-100)">ใบไม้</div>
+      <div class="rom" style="color:var(--neutral-400)">bai mai &middot; leaf</div>
+      <div class="btnrow">
+        <button class="btn" style="background:transparent;color:#ea8073;box-shadow:inset 0 0 0 1px var(--neutral-500)">&#10005; Again</button>
+        <button class="btn" style="background:transparent;color:var(--neutral-100);box-shadow:inset 0 0 0 1px var(--neutral-500)">Hard</button>
+        <button class="btn" style="background:var(--brand-400);color:var(--brand-950)">&#10003; Good</button>
+      </div>
+    </div>
+    <div class="status">
+      <span style="background:var(--brand-900);color:var(--brand-200)">&#10003; Correct</span>
+      <span style="background:#610002;color:#ffcbc3">&#10005; Not quite</span>
+      <span style="background:#4f2100;color:#ffcdb1">&#9888; Needs review</span>
+    </div>
+  </div>
+</div>
+<p class="note">Dark mode doesn't simply invert the light palette. Filled buttons move up to the lighter brand-400 step with dark text (6.65:1), and surfaces come from neutral-950 and neutral-900.</p>
+
+<h2>Thai card-face font (user setting)</h2>
+<p class="note">The same confusable letters in each font: บ ป &middot; ด ต &middot; ข ฃ &middot; ช ซ &middot; ผ ฝ. Proposed default: a looped font for new learners. The setting lets people move to loopless fonts, which are what they'll see on signs, menus and websites.</p>
+<div class="fonts">
+  <div class="font"><div class="name">Noto Sans Thai Looped<small>Looped, friendly. Proposed default</small><span class="tag" style="background:var(--brand-100);color:var(--brand-800)">Learner</span></div><div class="sample" style="font-family:'Noto Sans Thai Looped'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+  <div class="font"><div class="name">IBM Plex Sans Thai Looped<small>Looped, crisper and more technical</small><span class="tag" style="background:var(--brand-100);color:var(--brand-800)">Learner</span></div><div class="sample" style="font-family:'IBM Plex Sans Thai Looped'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+  <div class="font"><div class="name">Sarabun<small>Looped (classic), the government document font, the current one</small><span class="tag" style="background:var(--neutral-100);color:var(--neutral-800)">Classic</span></div><div class="sample" style="font-family:'Sarabun'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+  <div class="font"><div class="name">Anuphan<small>Loopless, modern. Also the proposed UI font</small><span class="tag" style="background:var(--marigold-100);color:var(--marigold-800)">Real-world</span></div><div class="sample" style="font-family:'Anuphan'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+  <div class="font"><div class="name">Noto Sans Thai<small>Loopless, neutral signage style</small><span class="tag" style="background:var(--marigold-100);color:var(--marigold-800)">Real-world</span></div><div class="sample" style="font-family:'Noto Sans Thai'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+  <div class="font"><div class="name">Itim<small>Handwritten, like class notes</small><span class="tag" style="background:var(--neutral-100);color:var(--neutral-800)">Handwriting</span></div><div class="sample" style="font-family:'Itim'">บ ป ด ต ข ฃ ช ซ ผ ฝ<span class="s">ภาษาไทยไม่ยากอย่างที่คิด</span></div></div>
+</div>
+</main>
+<script>
+const R={
+ 'brand (leaf)':['#eafcef','#dcf4e3','#c1e3cb','#a1ceaf','#79b38c','#54996d','#2e7d4f','#1b6a3e','#04522c','#003b1e','#002712',6],
+ 'marigold':['#fff5e7','#ffeaca','#ffd18b','#e8a317','#d69500','#b37b00','#956600','#775100','#5b3d00','#422b00','#2c1b00',3],
+ 'neutral':['#f5f7f6','#ebeeeb','#d6dad7','#bdc2be','#9ea5a0','#828a84','#6c746e','#545c56','#3f4641','#2d322e','#1c201d',-1],
+ 'danger (lacquer)':['#fff4f2','#ffe6e3','#ffcbc3','#fda79b','#ea8073','#d55c50','#b8322a','#a21f1b','#820608','#610002','#430001',7],
+ 'warning':['#fff4ef','#ffe8da','#ffcdb1','#f5ae85','#e28a54','#c25e0a','#ae5200','#8c4100','#6c3000','#4f2100','#361400',5],
+ 'info (kram)':['#f3f7ff','#e5edff','#cad8fe','#aec0f0','#8ca1dd','#6d84c9','#546bb5','#3d539f','#2b3d81','#1c2a63','#101a45',7]
+};
+const steps=[50,100,200,300,400,500,600,700,800,900,950];
+function lum(h){const c=[1,3,5].map(i=>{let v=parseInt(h.substr(i,2),16)/255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4)});return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]}
+const host=document.getElementById('ramps');
+for(const [name,arr] of Object.entries(R)){
+  const row=document.createElement('div');row.className='ramp';
+  row.innerHTML='<div class="lbl">'+name+'</div>';
+  arr.slice(0,11).forEach((hex,i)=>{
+    const d=document.createElement('div');d.className='sw'+(i===arr[11]?' anchor':'');
+    d.style.background=hex;d.style.color=lum(hex)>0.25?'#1c201d':'#ffffff';
+    d.innerHTML='<b>'+steps[i]+'</b><span>'+hex+'</span>';row.appendChild(d);
+  });
+  host.appendChild(row);
+}
+</script>
+</body>
+</html>

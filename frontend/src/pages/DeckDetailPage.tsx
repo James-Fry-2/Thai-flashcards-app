@@ -99,13 +99,13 @@ export default function DeckDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/decks" className="text-gray-400 hover:text-gray-600">
+        <Link to="/decks" className="text-gray-600 hover:text-gray-600">
           <ArrowLeft size={20} />
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{deck?.name}</h1>
           {deck?.description && (
-            <p className="text-gray-500 text-sm">{deck.description}</p>
+            <p className="text-gray-600 text-sm">{deck.description}</p>
           )}
         </div>
         <div className="flex gap-2">
@@ -145,7 +145,7 @@ export default function DeckDetailPage() {
             </>
           ) : (
             <button
-              className="btn-secondary text-sm text-gray-400 hover:text-red-500"
+              className="btn-secondary text-sm text-gray-600 hover:text-red-600"
               onClick={() => setConfirmingDelete(true)}
               title="Delete deck"
             >
@@ -156,21 +156,21 @@ export default function DeckDetailPage() {
       </div>
 
       {isLoading && !data ? (
-        <p className="text-gray-400">Loading cards…</p>
+        <p className="text-gray-600">Loading cards…</p>
       ) : cards.length === 0 && total === 0 ? (
-        <div className="card text-center py-12 text-gray-400">
+        <div className="card text-center py-12 text-gray-600">
           No cards yet. Upload notes to generate cards.
         </div>
       ) : cards.length === 0 && flaggedOnly ? (
-        <div className="card text-center py-12 text-gray-400">
+        <div className="card text-center py-12 text-gray-600">
           Nothing needs attention. Nice.
         </div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">{total} cards</p>
+            <p className="text-sm text-gray-600">{total} cards</p>
             {totalPages > 1 && (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 Page {page + 1} of {totalPages}
               </p>
             )}
@@ -197,15 +197,15 @@ export default function DeckDetailPage() {
                       <span className="inline-flex items-center gap-1.5">
                         {card.thai}
                         {(card.translation_status === 'flagged' || card.has_open_flags) && (
-                          <Flag size={11} className="text-amber-500 shrink-0" />
+                          <Flag size={11} className="text-amber-700 shrink-0" />
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400">{card.romanization}</td>
+                    <td className="px-4 py-3 text-gray-600">{card.romanization}</td>
                     <td className="px-4 py-3">{card.english}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
                           {card.card_type}
                         </span>
                         {card.topics?.map((t) => (
@@ -219,7 +219,7 @@ export default function DeckDetailPage() {
                         {card.tags?.map((t) => (
                           <span
                             key={t.id}
-                            className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                            className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full"
                           >
                             {t.name}
                           </span>
@@ -228,7 +228,7 @@ export default function DeckDetailPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        className="text-gray-300 hover:text-red-500 transition-colors"
+                        className="text-gray-600 hover:text-red-600 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation()
                           deleteCard.mutate(card.id)
@@ -257,7 +257,7 @@ export default function DeckDetailPage() {
                   p === 'ellipsis' ? (
                     <span
                       key={`ellipsis-${idx}`}
-                      className="w-8 h-8 flex items-center justify-center text-gray-400 text-sm"
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 text-sm"
                     >
                       …
                     </span>
@@ -266,8 +266,8 @@ export default function DeckDetailPage() {
                       key={p}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                         p === page
-                          ? 'bg-brand-600 text-white'
-                          : 'text-gray-500 hover:bg-gray-100'
+                          ? 'bg-brand-500 text-brand-950'
+                          : 'text-gray-600 hover:bg-gray-100'
                       }`}
                       onClick={() => setPage(p)}
                     >

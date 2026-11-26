@@ -34,7 +34,7 @@ const SIGNAL_COLORS: Record<string, string> = {
   header_change:  'bg-teal-100 text-teal-700',
   lexical_hit:    'bg-green-100 text-green-700',
   topic_shift:    'bg-pink-100 text-pink-700',
-  recto_start:    'bg-gray-100 text-gray-500',
+  recto_start:    'bg-gray-100 text-gray-700',
   outline:        'bg-indigo-100 text-indigo-700',
   toc_links:      'bg-indigo-100 text-indigo-700',
   page_labels:    'bg-indigo-100 text-indigo-700',
@@ -43,7 +43,7 @@ const SIGNAL_COLORS: Record<string, string> = {
 }
 
 function SignalBadge({ signal }: { signal: string }) {
-  const cls = SIGNAL_COLORS[signal] ?? 'bg-gray-100 text-gray-500'
+  const cls = SIGNAL_COLORS[signal] ?? 'bg-gray-100 text-gray-700'
   return (
     <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${cls}`}>
       {signal.replace(/_/g, ' ')}
@@ -56,19 +56,19 @@ function SignalBadge({ signal }: { signal: string }) {
 // ---------------------------------------------------------------------------
 function ConfidenceBadge({ score, source }: { score: number; source: string }) {
   if (source === 'structure') {
-    return <span className="text-xs font-semibold text-indigo-600">structure</span>
+    return <span className="text-xs font-semibold text-indigo-700">structure</span>
   }
   if (source === 'user') {
-    return <span className="text-xs text-gray-400">manual</span>
+    return <span className="text-xs text-gray-600">manual</span>
   }
   if (source === 'example_match') {
-    return <span className="text-xs font-semibold text-amber-600">example</span>
+    return <span className="text-xs font-semibold text-amber-700">example</span>
   }
   const pct = Math.round(score * 100)
   const cls =
-    pct >= 70 ? 'text-green-600' :
-    pct >= 40 ? 'text-amber-600' :
-               'text-red-500'
+    pct >= 70 ? 'text-green-700' :
+    pct >= 40 ? 'text-amber-700' :
+               'text-red-600'
   return <span className={`text-xs font-medium ${cls}`}>{pct}%</span>
 }
 
@@ -109,7 +109,7 @@ function PageThumb({
           onClick={onAddBefore}
           title={`Add chapter start at page ${page}`}
           className={`absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-5 h-5 rounded-full
-            bg-brand-600 text-white flex items-center justify-center shadow
+            bg-brand-500 text-brand-950 flex items-center justify-center shadow
             transition-opacity ${hovered ? 'opacity-100' : 'opacity-0'}`}
         >
           <Plus size={10} />
@@ -186,12 +186,12 @@ function FilmstripChapter({
       {/* Section header */}
       <div className="flex items-center gap-1.5 mb-2 text-xs">
         {boundary.include
-          ? <BookOpen size={12} className="text-brand-500 shrink-0" />
-          : <EyeOff size={12} className="text-gray-400 shrink-0" />}
-        <span className={`font-medium truncate max-w-[140px] ${boundary.include ? '' : 'text-gray-400'}`}>
+          ? <BookOpen size={12} className="text-brand-700 shrink-0" />
+          : <EyeOff size={12} className="text-gray-600 shrink-0" />}
+        <span className={`font-medium truncate max-w-[140px] ${boundary.include ? '' : 'text-gray-600'}`}>
           {label}
         </span>
-        <span className="text-gray-400 shrink-0">pp {start}–{end}</span>
+        <span className="text-gray-600 shrink-0">pp {start}–{end}</span>
         <ConfidenceBadge score={boundary.confidence} source={boundary.source} />
       </div>
 
@@ -246,8 +246,8 @@ function BoundaryRow({ boundary, pageCount, isSelected, onSelect, onChange, onDe
         className="flex items-center justify-center"
       >
         {boundary.include
-          ? <Eye size={15} className="text-brand-500" />
-          : <EyeOff size={15} className="text-gray-400" />}
+          ? <Eye size={15} className="text-brand-700" />
+          : <EyeOff size={15} className="text-gray-600" />}
       </button>
 
       {/* Page start input */}
@@ -288,12 +288,12 @@ function BoundaryRow({ boundary, pageCount, isSelected, onSelect, onChange, onDe
           <SignalBadge key={s} signal={s} />
         ))}
         {boundary.signals.length > 2 && (
-          <span className="text-[10px] text-gray-400">+{boundary.signals.length - 2}</span>
+          <span className="text-[10px] text-gray-600">+{boundary.signals.length - 2}</span>
         )}
       </div>
 
       {/* Source tag */}
-      <span className="text-[10px] text-gray-400 truncate">
+      <span className="text-[10px] text-gray-600 truncate">
         {boundary.source}
       </span>
 
@@ -302,7 +302,7 @@ function BoundaryRow({ boundary, pageCount, isSelected, onSelect, onChange, onDe
         ? (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete() }}
-            className="text-gray-300 hover:text-red-500 transition-colors"
+            className="text-gray-600 hover:text-red-600 transition-colors"
           >
             <Trash2 size={13} />
           </button>
@@ -342,7 +342,7 @@ function ExamplePanel({ uploadId, examplePage, proposals, currentBoundaries, onA
           <Wand2 size={14} className="inline mr-1" />
           Pages similar to page {examplePage} — {proposals.length} found
         </p>
-        <button onClick={onClose}><X size={15} className="text-gray-400 hover:text-gray-600" /></button>
+        <button onClick={onClose}><X size={15} className="text-gray-600 hover:text-gray-600" /></button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -380,7 +380,7 @@ function ExamplePanel({ uploadId, examplePage, proposals, currentBoundaries, onA
         <button
           onClick={() => onAccept(Array.from(selected), false)}
           disabled={selected.size === 0}
-          className="px-3 py-1.5 text-xs rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-50"
+          className="px-3 py-1.5 text-xs rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 disabled:opacity-50"
         >
           Add selected as boundaries ({selected.size})
         </button>
@@ -403,14 +403,14 @@ function CostPreview({ boundaries }: { boundaries: ChapterBoundary[] }) {
   const included = boundaries.filter((b) => b.include)
   const skipped = boundaries.filter((b) => !b.include)
   return (
-    <div className="text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-2.5 flex items-center gap-2">
+    <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-4 py-2.5 flex items-center gap-2">
       <BookOpen size={14} className="shrink-0" />
       <span>
         <strong className="text-gray-700">{included.length}</strong>{' '}
         {included.length === 1 ? 'chapter' : 'chapters'} → {included.length} generation{' '}
         {included.length === 1 ? 'call' : 'calls'}
         {skipped.length > 0 && (
-          <span className="ml-2 text-gray-400">
+          <span className="ml-2 text-gray-600">
             · {skipped.length} span{skipped.length > 1 ? 's' : ''} skipped (no LLM cost)
           </span>
         )}
@@ -604,19 +604,19 @@ export default function SplitReviewPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 size={24} className="animate-spin text-brand-500" />
+        <Loader2 size={24} className="animate-spin text-brand-700" />
       </div>
     )
   }
 
   if (isError || !splitData) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-500">
-        <AlertTriangle size={32} className="text-red-400" />
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-600">
+        <AlertTriangle size={32} className="text-red-600" />
         <p>Failed to load split data.</p>
         <button
           onClick={() => navigate('/upload')}
-          className="text-sm text-brand-600 hover:underline"
+          className="text-sm text-brand-700 hover:underline"
         >
           Back to uploads
         </button>
@@ -635,13 +635,13 @@ export default function SplitReviewPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/upload')}
-          className="text-gray-400 hover:text-gray-700 transition-colors"
+          className="text-gray-600 hover:text-gray-700 transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
           <h1 className="text-xl font-bold">Review chapter split</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             {splitData.source_title ?? `Upload #${id}`} · {pageCount} pages
           </p>
         </div>
@@ -650,7 +650,7 @@ export default function SplitReviewPage() {
             <button
               onClick={() => saveMutation.mutate(boundaries)}
               disabled={saveMutation.isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-500 hover:bg-gray-50 disabled:opacity-50"
             >
               {saveMutation.isLoading
                 ? <Loader2 size={13} className="animate-spin" />
@@ -660,7 +660,7 @@ export default function SplitReviewPage() {
           )}
           <button
             onClick={reRunDetection}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-500 hover:bg-gray-50"
           >
             <RefreshCw size={13} />
             Re-detect
@@ -713,7 +713,7 @@ export default function SplitReviewPage() {
                 if (!starts.has(p)) { addBoundary(p); break }
               }
             }}
-            className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"
+            className="flex items-center gap-1 text-xs text-brand-700 hover:text-brand-700"
           >
             <Plus size={12} /> Add boundary
           </button>
@@ -721,7 +721,7 @@ export default function SplitReviewPage() {
 
         {/* Column headers */}
         <div
-          className="grid px-3 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wide text-gray-400"
+          className="grid px-3 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wide text-gray-600"
           style={{ gridTemplateColumns: '28px 70px 1fr 1fr 80px auto 28px' }}
         >
           <span title="Include / Skip">Inc</span>
@@ -752,7 +752,7 @@ export default function SplitReviewPage() {
               setBoundaries((prev) => prev.map((b) => ({ ...b, include: true })))
               setDirty(true)
             }}
-            className="text-brand-600 hover:underline"
+            className="text-brand-700 hover:underline"
           >
             Include all
           </button>
@@ -763,7 +763,7 @@ export default function SplitReviewPage() {
               )
               setDirty(true)
             }}
-            className="text-gray-500 hover:underline"
+            className="text-gray-600 hover:underline"
           >
             Skip all but first
           </button>
@@ -783,7 +783,7 @@ export default function SplitReviewPage() {
               }])
               setDirty(true)
             }}
-            className="text-red-400 hover:underline"
+            className="text-red-600 hover:underline"
           >
             Clear all
           </button>
@@ -798,14 +798,14 @@ export default function SplitReviewPage() {
         <button
           onClick={() => confirmMutation.mutate(boundaries)}
           disabled={confirmMutation.isLoading || includedCount === 0}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-600 text-white font-medium hover:bg-brand-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-brand-500 text-brand-950 font-medium hover:bg-brand-400 disabled:opacity-50"
         >
           {confirmMutation.isLoading
             ? <Loader2 size={16} className="animate-spin" />
             : <Check size={16} />}
           Confirm &amp; generate
           {includedCount > 0 && (
-            <span className="ml-1 text-brand-200 text-sm">
+            <span className="ml-1 text-brand-800 text-sm">
               ({includedCount} chapter{includedCount !== 1 ? 's' : ''})
             </span>
           )}

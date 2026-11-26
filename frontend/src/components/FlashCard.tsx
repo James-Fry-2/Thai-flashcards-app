@@ -63,12 +63,12 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
             <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} size={20} />
           </div>
           {card.romanization && (
-            <p className="text-lg text-gray-400">{card.romanization}</p>
+            <p className="text-lg text-gray-600">{card.romanization}</p>
           )}
-          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
             {card.card_type}
           </span>
-          <p className="text-xs text-gray-400 mt-4">tap to reveal</p>
+          <p className="text-xs text-gray-600 mt-4">tap to reveal</p>
         </div>
 
         {/* Back */}
@@ -81,7 +81,7 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
               e.stopPropagation()
               setFlagOpen((v) => !v)
             }}
-            className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+            className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-600 hover:text-amber-700 hover:bg-amber-50 transition-colors"
             title="Flag something wrong with this card"
           >
             <Flag size={14} />
@@ -92,7 +92,7 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
               onClick={(e) => e.stopPropagation()}
               className="absolute top-11 right-3 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-10 text-left"
             >
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide mb-2">
                 What's wrong?
               </p>
               <div className="flex flex-wrap gap-1 mb-2">
@@ -121,7 +121,7 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setFlagOpen(false)}
-                  className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+                  className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
                 >
                   Cancel
                 </button>
@@ -137,7 +137,7 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
           )}
 
           <div className="flex items-center gap-2">
-            <span className="thai text-xl text-gray-500">{card.thai}</span>
+            <span className="thai text-xl text-gray-600">{card.thai}</span>
             <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} showSlow />
           </div>
           <p className="text-3xl font-semibold text-gray-900">{card.english}</p>
@@ -152,7 +152,7 @@ export default function FlashCard({ card, isFlipped, onFlip }: Props) {
                   className="ml-1"
                 />
               </p>
-              <p className="text-sm text-gray-400 mt-1">{card.example_english}</p>
+              <p className="text-sm text-gray-600 mt-1">{card.example_english}</p>
             </div>
           )}
           {card.compound_breakdown && card.compound_breakdown.length >= 2 && (

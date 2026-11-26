@@ -54,7 +54,7 @@ export default function TranslationRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="thai text-lg font-medium text-gray-900">{item.thai}</span>
-            {item.romanization && <span className="text-xs text-gray-400">{item.romanization}</span>}
+            {item.romanization && <span className="text-xs text-gray-600">{item.romanization}</span>}
             {verdict && (
               <span className={clsx('px-1.5 py-0.5 rounded text-[11px] font-medium', VERDICT_STYLE[verdict.verdict])}>
                 {VERDICT_LABEL[verdict.verdict]}
@@ -62,14 +62,14 @@ export default function TranslationRow({
             )}
           </div>
           <div className="text-sm text-gray-600 mt-0.5">{item.english}</div>
-          {verdict?.reason && <div className="text-xs text-gray-400 mt-0.5 italic">{verdict.reason}</div>}
+          {verdict?.reason && <div className="text-xs text-gray-600 mt-0.5 italic">{verdict.reason}</div>}
           {item.translation_candidates.length > 0 && !correctOpen && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {item.translation_candidates.map((c) => (
                 <button
                   key={c}
                   onClick={() => onCorrect(c)}
-                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 hover:bg-brand-100 hover:text-brand-700 text-gray-600"
+                  className="px-2 py-0.5 rounded-full text-xs bg-gray-100 hover:bg-brand-100 hover:text-brand-700 text-gray-700"
                 >
                   {c}
                 </button>
@@ -77,7 +77,7 @@ export default function TranslationRow({
             </div>
           )}
           {(item.source_title || item.chapter_label) && (
-            <div className="text-[11px] text-gray-400 mt-1">
+            <div className="text-[11px] text-gray-600 mt-1">
               {[item.source_title, item.chapter_label].filter(Boolean).join(' · ')}
             </div>
           )}
@@ -91,11 +91,11 @@ export default function TranslationRow({
                   if (e.key === 'Enter' && draft.trim()) onCorrect(draft.trim())
                   if (e.key === 'Escape') onToggleCorrect()
                 }}
-                className="flex-1 text-sm px-2 py-1 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="flex-1 text-sm px-2 py-1 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-400"
               />
               <button
                 onClick={() => draft.trim() && onCorrect(draft.trim())}
-                className="px-2 py-1 rounded bg-brand-600 text-white text-xs font-medium hover:bg-brand-700"
+                className="px-2 py-1 rounded bg-brand-500 text-brand-950 text-xs font-medium hover:bg-brand-400"
               >
                 Save
               </button>
@@ -118,13 +118,13 @@ export default function TranslationRow({
           <button
             onClick={onCheck}
             disabled={checking}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50"
           >
             <Sparkles size={13} /> {checking ? 'Checking…' : 'Check with AI'}
           </button>
           <button
             onClick={onSkip}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-400 hover:bg-gray-100"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-100"
           >
             <SkipIcon size={13} /> Skip
           </button>

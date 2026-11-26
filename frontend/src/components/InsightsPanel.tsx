@@ -12,10 +12,11 @@ import type {
 } from '../types'
 
 const BAND_COLOR: Record<string, string> = {
-  solid: '#22c55e',      // green-500
-  developing: '#60a5fa', // blue-400
-  fragile: '#f59e0b',    // amber-500
-  struggling: '#ef4444', // red-500
+  // Brand chart colours (brand/BRAND-SYSTEM.md §8): CVD-checked, each >= 3:1 on white.
+  solid: '#006c31',      // leaf-700
+  developing: '#5b85d8', // kram-500
+  fragile: '#b17d00',    // marigold-500
+  struggling: '#b8322a', // lacquer-600
 }
 const BAND_LABEL: Record<string, string> = {
   solid: 'Solid',
@@ -62,18 +63,18 @@ function GroupRow({ group, onStudy }: { group: MasteryGroup; onStudy: (ids: numb
     <div className="space-y-1.5 py-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-gray-800 truncate">{group.name}</span>
-        <span className="text-xs text-gray-400 shrink-0">{group.reviewed_cards} reviewed</span>
+        <span className="text-xs text-gray-600 shrink-0">{group.reviewed_cards} reviewed</span>
       </div>
       <BandBar distribution={group.band_distribution} sampleSize={group.reviewed_cards} />
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-600">
           {group.mean_accuracy != null ? `${Math.round(group.mean_accuracy * 100)}% accuracy` : '—'}
           {group.mean_retention != null ? ` · ${Math.round(group.mean_retention * 100)}% retention` : ''}
         </span>
         {group.weak_card_ids.length > 0 && (
           <button
             onClick={() => onStudy(group.weak_card_ids, group.name)}
-            className="text-xs font-medium text-brand-600 hover:text-brand-700"
+            className="text-xs font-medium text-brand-700 hover:text-brand-700"
           >
             Study these ({group.weak_card_ids.length})
           </button>
@@ -90,12 +91,12 @@ function DimensionSection({
   onStudy: (ids: number[], label: string) => void
 }) {
   if (rollup.strengths.length === 0 && rollup.weaknesses.length === 0) {
-    return <p className="text-sm text-gray-400 py-4 text-center">Not enough data yet in this view.</p>
+    return <p className="text-sm text-gray-600 py-4 text-center">Not enough data yet in this view.</p>
   }
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
       <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Strengths</p>
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Strengths</p>
         <div className="divide-y divide-gray-50">
           {rollup.strengths.map((g) => (
             <GroupRow key={g.id} group={g} onStudy={onStudy} />
@@ -103,7 +104,7 @@ function DimensionSection({
         </div>
       </div>
       <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Weaknesses</p>
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Weaknesses</p>
         <div className="divide-y divide-gray-50">
           {rollup.weaknesses.map((g) => (
             <GroupRow key={g.id} group={g} onStudy={onStudy} />
@@ -167,7 +168,7 @@ export default function InsightsPanel() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold flex items-center gap-2">
-        <Sparkles size={18} className="text-brand-500" />
+        <Sparkles size={18} className="text-brand-700" />
         Insights
       </h2>
 
@@ -175,26 +176,26 @@ export default function InsightsPanel() {
       {trendData.some((d) => d.againRate != null) && (
         <div className="card">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={15} className="text-gray-400" />
+            <TrendingUp size={15} className="text-gray-600" />
             <p className="text-sm font-medium text-gray-600">Weekly again-rate</p>
           </div>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={trendData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#eeecea" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#75716a' }} axisLine={false} tickLine={false} />
               <YAxis
                 domain={[0, 1]}
                 tickFormatter={(v) => `${Math.round(v * 100)}%`}
-                tick={{ fontSize: 11, fill: '#9ca3af' }}
+                tick={{ fontSize: 11, fill: '#75716a' }}
                 axisLine={false}
                 tickLine={false}
                 width={44}
               />
               <Tooltip
                 formatter={(v: number) => [`${Math.round(v * 100)}%`, 'Again rate']}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #dbd9d5' }}
               />
-              <Line type="monotone" dataKey="againRate" stroke="#a855f7" strokeWidth={2} dot={false} connectNulls />
+              <Line type="monotone" dataKey="againRate" stroke="#006c31" strokeWidth={2} dot={false} connectNulls />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -208,7 +209,7 @@ export default function InsightsPanel() {
               key={d.key}
               onClick={() => setDimension(d.key)}
               className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                dimension === d.key ? 'bg-brand-100 text-brand-700' : 'text-gray-500 hover:bg-gray-50'
+                dimension === d.key ? 'bg-brand-100 text-brand-700' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               {d.label}
@@ -222,14 +223,14 @@ export default function InsightsPanel() {
       {coverageGroups.length > 0 && (
         <div className="card">
           <div className="flex items-center gap-2 mb-2">
-            <Inbox size={15} className="text-gray-400" />
+            <Inbox size={15} className="text-gray-600" />
             <p className="text-sm font-medium text-gray-600">Not started yet</p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {coverageGroups.map((c) => (
               <span
                 key={`${c.id}`}
-                className="text-xs text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg"
+                className="text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg"
               >
                 {c.name} ({c.new_cards} new)
               </span>
@@ -247,7 +248,7 @@ export default function InsightsPanel() {
               <p className="text-gray-700">{describePattern(p)}</p>
               <button
                 onClick={() => studyThese(p.card_ids, p.label)}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700 shrink-0"
+                className="text-xs font-medium text-brand-700 hover:text-brand-700 shrink-0"
               >
                 Study these ({p.card_ids.length})
               </button>
@@ -265,13 +266,13 @@ export default function InsightsPanel() {
                   onClick={() =>
                     studyThese(data.patterns.acquisition_vs_retention!.struggling_card_ids, 'Reteach')
                   }
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                  className="text-xs font-medium text-brand-700 hover:text-brand-700"
                 >
                   Study struggling ({data.patterns.acquisition_vs_retention.struggling_count})
                 </button>
                 <button
                   onClick={() => studyThese(data.patterns.acquisition_vs_retention!.fragile_card_ids, 'Re-space')}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                  className="text-xs font-medium text-brand-700 hover:text-brand-700"
                 >
                   Study fragile ({data.patterns.acquisition_vs_retention.fragile_count})
                 </button>

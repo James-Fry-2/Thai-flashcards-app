@@ -17,6 +17,7 @@ def _prefs_dict(prefs) -> dict:
         "daily_review_limit": prefs.daily_review_limit,
         "tts_autoplay_on_reveal": prefs.tts_autoplay_on_reveal,
         "tts_default_speed": prefs.tts_default_speed,
+        "card_font": prefs.card_font,
         "updated_at": prefs.updated_at.isoformat(),
     }
 
@@ -35,6 +36,7 @@ class PreferencesUpdate(BaseModel):
     daily_review_limit: Optional[int] = None
     tts_autoplay_on_reveal: Optional[bool] = None
     tts_default_speed: Optional[str] = None
+    card_font: Optional[str] = None
 
 
 @router.patch("/")
@@ -51,6 +53,7 @@ async def update_preferences(
             daily_review_limit=payload.daily_review_limit,
             tts_autoplay_on_reveal=payload.tts_autoplay_on_reveal,
             tts_default_speed=payload.tts_default_speed,
+            card_font=payload.card_font,
         )
     except ValueError as exc:
         raise HTTPException(422, str(exc))

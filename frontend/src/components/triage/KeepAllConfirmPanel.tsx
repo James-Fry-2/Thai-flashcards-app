@@ -28,7 +28,7 @@ export default function KeepAllConfirmPanel({ items, onConfirm, onCancel }: Prop
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold text-gray-900 mb-1">Keep all likely-OK translations</h3>
-        <p className="text-xs text-gray-500 mb-3">Uncheck any card you don't want to keep.</p>
+        <p className="text-xs text-gray-600 mb-3">Uncheck any card you don't want to keep.</p>
         <div className="overflow-y-auto flex-1 -mx-1 px-1 space-y-1">
           {items.map((item) => (
             <label
@@ -39,10 +39,10 @@ export default function KeepAllConfirmPanel({ items, onConfirm, onCancel }: Prop
                 type="checkbox"
                 checked={!unchecked.has(item.card_id)}
                 onChange={() => toggle(item.card_id)}
-                className="rounded border-gray-300 text-brand-600 focus:ring-brand-400"
+                className="rounded border-gray-500 text-brand-700 focus:ring-brand-400"
               />
               <span className="thai">{item.thai}</span>
-              <span className="text-gray-400">—</span>
+              <span className="text-gray-600">—</span>
               <span className="text-gray-600 truncate">{item.english}</span>
             </label>
           ))}
@@ -54,7 +54,7 @@ export default function KeepAllConfirmPanel({ items, onConfirm, onCancel }: Prop
           <button
             onClick={() => onConfirm(items.filter((i) => !unchecked.has(i.card_id)).map((i) => i.card_id))}
             disabled={includedCount === 0}
-            className="px-3 py-1.5 rounded text-sm font-medium bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+            className="px-3 py-1.5 rounded text-sm font-medium bg-brand-500 text-brand-950 hover:bg-brand-400 disabled:opacity-50"
           >
             Keep {includedCount} card{includedCount === 1 ? '' : 's'}
           </button>

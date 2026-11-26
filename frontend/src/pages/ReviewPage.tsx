@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FlashCard from '../components/FlashCard'
+import Bai from '../components/Bai'
 import { useAudio, useAudioPrefs } from '../hooks/useAudio'
 import api from '../services/api'
 import type { ReviewCard, Deck, TopicSummary } from '../types'
@@ -31,11 +32,12 @@ interface LocationState {
   backShortLabel?: string
 }
 
+// Brand rule (brand/BRAND-SYSTEM.md §5): only Good is filled; Again carries a cross, never colour alone.
 const RATING_LABELS = [
-  { value: 1, label: 'Again', color: 'bg-red-500 hover:bg-red-600', key: '1' },
-  { value: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-600', key: '2' },
-  { value: 3, label: 'Good', color: 'bg-green-500 hover:bg-green-600', key: '3' },
-  { value: 4, label: 'Easy', color: 'bg-blue-500 hover:bg-blue-600', key: '4' },
+  { value: 1, label: 'Again', icon: '\u2715', color: 'grade grade-again', key: '1' },
+  { value: 2, label: 'Hard', icon: '', color: 'grade', key: '2' },
+  { value: 3, label: 'Good', icon: '\u2713', color: 'grade grade-good', key: '3' },
+  { value: 4, label: 'Easy', icon: '', color: 'grade', key: '4' },
 ]
 
 function detectScope(pathname: string): Scope {
@@ -254,7 +256,7 @@ export default function ReviewPage() {
   }, [state, isFlipped, handleRate, speakCurrent])
 
   if (state === 'loading') {
-    return <div className="text-center py-20 text-gray-400">Loading session…</div>
+    return <div className="text-center py-20 text-gray-600">Loading session…</div>
   }
 
   if (state === 'limit' && session) {
@@ -262,7 +264,7 @@ export default function ReviewPage() {
       <div className="max-w-sm mx-auto text-center py-20 space-y-4">
         <div className="text-6xl">✅</div>
         <h2 className="text-2xl font-bold">Done for today</h2>
-        <p className="text-gray-500">
+        <p className="text-gray-600">
           You&apos;ve hit today&apos;s limit. {session.held_back} more{' '}
           {session.held_back === 1 ? 'card is' : 'cards are'} waiting. They&apos;ll still be there tomorrow.
         </p>
@@ -292,13 +294,17 @@ export default function ReviewPage() {
 
     return (
       <div className="max-w-sm mx-auto text-center py-20 space-y-4">
-        <div className="text-6xl">🎉</div>
-        <h2 className="text-2xl font-bold">Session complete!</h2>
-        <p className="text-gray-500">
+        <Bai size={88} className="mx-auto" />
+        <h2 className="text-2xl font-bold">All done for this session</h2>
+        <p className="text-gray-600">
           {summary.cards_reviewed} cards reviewed · +{summary.xp_earned} XP
         </p>
         {summary.streak > 1 && (
-          <p className="text-orange-500 font-medium">🔥 {summary.streak}-day streak!</p>
+          <p>
+            <span className="inline-block rounded-full bg-orange-300 text-orange-950 px-3 py-1 text-sm font-semibold">
+              {summary.streak}-day streak
+            </span>
+          </p>
         )}
         <div className="flex flex-col gap-2 items-center">
           <Link to={backTo} className="btn-primary">
@@ -318,7 +324,7 @@ export default function ReviewPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <div className="flex items-center justify-between text-sm text-gray-400">
+      <div className="flex items-center justify-between text-sm text-gray-600">
         <Link to={backTo} className="flex items-center gap-1 hover:text-gray-600">
           <ArrowLeft size={14} />
           {scope === 'library' ? 'Dashboard' : scope === 'custom' ? (locationState.backShortLabel ?? 'At-risk') : isUploadScope ? 'Chapters' : isTopicScope ? 'Topic' : 'Deck'}
@@ -328,7 +334,7 @@ export default function ReviewPage() {
             {scopeTitle}
           </span>
           {scopeSubtitle && (
-            <span className="text-xs text-gray-400">{scopeSubtitle}</span>
+            <span className="text-xs text-gray-600">{scopeSubtitle}</span>
           )}
         </div>
         <span>
@@ -366,13 +372,14 @@ export default function ReviewPage() {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-4 gap-2"
         >
-          {RATING_LABELS.map(({ value, label, color, key }) => (
+          {RATING_LABELS.map(({ value, label, icon, color, key }) => (
             <button
               key={value}
-              className={`${color} text-white rounded-xl py-3 text-sm font-medium transition-colors`}
+              className={color}
               onClick={() => handleRate(value)}
             >
-              <span className="block text-xs opacity-70">[{key}]</span>
+              <span className="block text-xs font-normal">[{key}]</span>
+              {icon && <span aria-hidden="true">{icon} </span>}
               {label}
             </button>
           ))}
@@ -380,7 +387,7 @@ export default function ReviewPage() {
       )}
 
       {!isFlipped && (
-        <p className="text-center text-sm text-gray-400">
+        <p className="text-center text-sm text-gray-600">
           Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">Space</kbd> or tap card to reveal ·{' '}
           <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">R</kbd> to listen
         </p>

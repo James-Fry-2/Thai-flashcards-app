@@ -28,7 +28,7 @@ export default function KnownBar({ stats, showLegend = false }: { stats: Reading
         )}
       </div>
       {showLegend && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
           {ORDER.map((s) => (
             <span key={s} className="flex items-center gap-1.5">
               <span className={`inline-block h-2 w-2 rounded-full ${STATUS_STYLE[s].dot}`} />

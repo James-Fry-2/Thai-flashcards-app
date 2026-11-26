@@ -27,7 +27,7 @@ export default function CompoundBreakdown({ parts, compact = false, sourceIsUser
     >
       {parts.map((part, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-gray-300 text-xs">+</span>}
+          {i > 0 && <span className="text-gray-600 text-xs">+</span>}
           <span
             className={
               `inline-flex flex-col items-center rounded-lg border text-center ${chipTone(part, sourceIsUser)} ` +
@@ -38,13 +38,13 @@ export default function CompoundBreakdown({ parts, compact = false, sourceIsUser
               {part.thai}
             </span>
             {part.romanization && (
-              <span className="text-[10px] text-gray-400 mt-0.5">{part.romanization}</span>
+              <span className="text-[10px] text-gray-600 mt-0.5">{part.romanization}</span>
             )}
             <span
               className={
                 part.gloss
                   ? `font-medium text-amber-700 mt-0.5 ${compact ? 'text-[10px]' : 'text-[10px]'}`
-                  : 'text-[10px] text-gray-300 mt-0.5'
+                  : 'text-[10px] text-gray-600 mt-0.5'
               }
             >
               {part.gloss || '—'}
