@@ -17,7 +17,6 @@ registry's purpose (a slot for future formats, not a finished list) stays
 legible:
   - cloze deletion over `example_thai`
   - typed production (learner types the Thai, not multiple choice)
-  - audio identification
 """
 from __future__ import annotations
 
@@ -73,6 +72,19 @@ MC_TH_EN = ExerciseType(
     build_payload=_mc_th_en_payload,
 )
 
+def _listen_th_en_eligible(card: Card) -> bool:
+    """Listening needs a speakable word: grammar patterns like "ไม่...เลย"
+    have gaps a voice can't say, and long phrases test memory, not hearing."""
+    thai = card.thai or ""
+    return (
+        _th_en_eligible(card)
+        and card.card_type != "grammar"
+        and "..." not in thai
+        and "\u2026" not in thai
+        and len(thai) <= 40
+    )
+
+
 RECALL_TH_EN = ExerciseType(
     key="recall_th_en",
     direction="th_to_en",
@@ -81,7 +93,18 @@ RECALL_TH_EN = ExerciseType(
     build_payload=_recall_th_en_payload,
 )
 
+# Same option slate as mc_th_en, but the prompt is the card's audio
+# (/api/cards/{id}/audio) and the Thai text stays hidden until answered.
+LISTEN_TH_EN = ExerciseType(
+    key="listen_th_en",
+    direction="th_to_en",
+    grading="binary",
+    is_eligible=_listen_th_en_eligible,
+    build_payload=_mc_th_en_payload,
+)
+
 REGISTRY: dict[str, ExerciseType] = {
     MC_TH_EN.key: MC_TH_EN,
     RECALL_TH_EN.key: RECALL_TH_EN,
+    LISTEN_TH_EN.key: LISTEN_TH_EN,
 }

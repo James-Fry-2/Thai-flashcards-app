@@ -522,7 +522,7 @@ export interface PracticeOption {
   position: number
 }
 
-export type ExerciseType = 'mc_th_en' | 'recall_th_en'
+export type ExerciseType = 'mc_th_en' | 'recall_th_en' | 'listen_th_en'
 
 export interface PracticeItem {
   card_id: number
@@ -550,6 +550,7 @@ export interface PracticeSummary {
   total: number
   by_exercise_type: Record<string, number>
   binary_accuracy: number | null
+  accuracy_by_exercise_type?: Record<string, number>
   self_rated_rating_distribution: Record<string, number>
 }
 

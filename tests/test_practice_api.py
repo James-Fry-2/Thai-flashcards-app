@@ -131,26 +131,26 @@ async def _seed_deck_with_cards(factory, n_fillers=8):
 
 class TestBuildSessionAssignment:
     @pytest.mark.asyncio
-    async def test_mc_share_lands_in_40_60_percent(self, db):
-        """Cards eligible for both exercise types: assignment must be
+    async def test_exercise_types_share_cards_uniformly(self, db):
+        """Cards eligible for every exercise type: assignment must be
         uniform-random, not familiarity-driven (decision 2). A biased split
         here would mean exercise type quietly correlates with something
-        other than chance."""
+        other than chance. Three types -> each should land near 1/3."""
         deck_a = await _make_deck(db, "Target Deck")
         deck_b = await _make_deck(db, "Filler Deck")
-        target = await _make_card(db, deck_a.id, "แมว", "cat")
+        await _make_card(db, deck_a.id, "แมว", "cat")
         await _make_filler_cards(db, deck_b.id, 10)  # plenty of valid MC distractors, library-wide pool
 
-        total = 200
-        mc_count = 0
+        total = 300
+        counts: dict[str, int] = {}
         for _ in range(total):
             items = await build_session(db, scope_type="deck", scope_id=deck_a.id, limit=1, exercise_types=None)
             assert len(items) == 1
-            if items[0]["exercise_type"] == "mc_th_en":
-                mc_count += 1
+            counts[items[0]["exercise_type"]] = counts.get(items[0]["exercise_type"], 0) + 1
 
-        share = mc_count / total
-        assert 0.40 <= share <= 0.60
+        assert set(counts) == {"mc_th_en", "recall_th_en", "listen_th_en"}
+        for key, n in counts.items():
+            assert 0.22 <= n / total <= 0.45, f"{key} share {n / total:.2f}"
 
     @pytest.mark.asyncio
     async def test_restricted_to_mc_returns_only_mc_items(self, db):
@@ -473,3 +473,71 @@ class TestDistractorPoolIsLibraryWide:
         item = next(i for i in data["items"] if i["card_id"] == target_id)
         option_ids = {o["card_id"] for o in item["payload"]["options"]}
         assert option_ids & y_card_ids
+
+
+# ---------------------------------------------------------------------------
+# listen_th_en — audio prompt, same option slate as mc_th_en
+# ---------------------------------------------------------------------------
+
+class TestListening:
+    def test_eligibility_skips_unspeakable_cards(self):
+        from src.practice.registry import LISTEN_TH_EN
+
+        ok = Card(thai="แมว", english="cat", card_type="vocab")
+        assert LISTEN_TH_EN.is_eligible(ok)
+        for bad in [
+            Card(thai="ไม่...เลย", english="not at all", card_type="grammar"),
+            Card(thai="ไม่…เลย", english="not at all", card_type="vocab"),
+            Card(thai="กิน", english="eat", card_type="grammar"),
+            Card(thai="ก" * 41, english="long", card_type="vocab"),
+            Card(thai="แมว", english="", card_type="vocab"),
+        ]:
+            assert not LISTEN_TH_EN.is_eligible(bad), bad.thai
+
+    @pytest.mark.asyncio
+    async def test_listen_items_are_binary_with_options_and_no_answer(self, client):
+        ac, factory = client
+        deck_id, target_id = await _seed_deck_with_cards(factory)
+        data = (await ac.post(
+            "/api/practice/session",
+            params={"deck_id": deck_id, "limit": 20, "exercise_types": "listen_th_en"},
+        )).json()
+        assert data["items"]
+        for item in data["items"]:
+            assert item["exercise_type"] == "listen_th_en"
+            assert item["grading"] == "binary"
+            assert len(item["payload"]["options"]) == 4
+            assert "english" not in item  # the answer only arrives after the attempt
+            assert all("thai" not in o for o in item["payload"]["options"])
+
+    @pytest.mark.asyncio
+    async def test_session_summary_reports_accuracy_per_exercise_type(self, client):
+        ac, factory = client
+        deck_id, target_id = await _seed_deck_with_cards(factory)
+
+        async def answer(exercise_type: str, correct: bool, session_id: int):
+            data = (await ac.post(
+                "/api/practice/session",
+                params={"deck_id": deck_id, "limit": 20, "exercise_types": exercise_type},
+            )).json()
+            item = next(i for i in data["items"] if i["card_id"] == target_id)
+            options = item["payload"]["options"]
+            chosen = next(o for o in options if (o["card_id"] == target_id) == correct)
+            r = await ac.post("/api/practice/attempt", json={
+                "session_id": session_id,
+                "card_id": target_id,
+                "exercise_type": exercise_type,
+                "chosen_card_id": chosen["card_id"],
+                "options": options,
+            })
+            assert r.status_code == 200 and r.json()["correct"] is correct
+
+        session_id = (await ac.post("/api/practice/session", params={"deck_id": deck_id, "limit": 1})).json()["session_id"]
+        await answer("mc_th_en", True, session_id)
+        await answer("listen_th_en", False, session_id)
+        await answer("listen_th_en", True, session_id)
+
+        summary = (await ac.post(f"/api/practice/session/{session_id}/end")).json()
+        assert summary["by_exercise_type"] == {"mc_th_en": 1, "listen_th_en": 2}
+        assert summary["accuracy_by_exercise_type"] == {"mc_th_en": 1.0, "listen_th_en": 0.5}
+        assert summary["binary_accuracy"] == pytest.approx(2 / 3)

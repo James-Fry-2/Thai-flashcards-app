@@ -165,6 +165,13 @@ async def end_practice_session(session_id: int, db: AsyncSession = Depends(get_d
         sum(1 for a in binary_attempts if a.outcome) / len(binary_attempts) if binary_attempts else None
     )
 
+    # Per binary type too: listening and reading accuracy answer different
+    # questions, so the summary can show them side by side.
+    accuracy_by_exercise_type: dict[str, float] = {}
+    for key in {a.exercise_type for a in binary_attempts}:
+        of_type = [a for a in binary_attempts if a.exercise_type == key]
+        accuracy_by_exercise_type[key] = sum(1 for a in of_type if a.outcome) / len(of_type)
+
     self_rated_attempts = [
         a for a in attempts if a.exercise_type in REGISTRY and REGISTRY[a.exercise_type].grading == "self_rated"
     ]
@@ -177,5 +184,6 @@ async def end_practice_session(session_id: int, db: AsyncSession = Depends(get_d
         "total": len(attempts),
         "by_exercise_type": by_exercise_type,
         "binary_accuracy": binary_accuracy,
+        "accuracy_by_exercise_type": accuracy_by_exercise_type,
         "self_rated_rating_distribution": self_rated_rating_distribution,
     }

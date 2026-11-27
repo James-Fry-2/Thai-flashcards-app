@@ -8,12 +8,14 @@ import FlashCard from '../components/FlashCard'
 import api from '../services/api'
 import type { Card, PracticeItem, PracticeOption, PracticeSession, PracticeSummary } from '../types'
 import Bai from '../components/Bai'
+import { play as playAudio } from '../services/audio'
+import { useAudioPrefs } from '../hooks/useAudio'
 
 type SessionState = 'loading' | 'practicing' | 'done'
 
 interface MissedItem {
   item: PracticeItem
-  chosenOption?: PracticeOption // mc_th_en
+  chosenOption?: PracticeOption // mc_th_en / listen_th_en
   rating?: number // recall_th_en
 }
 
@@ -45,6 +47,13 @@ function toFlashCardShape(item: PracticeItem): Card {
   }
 }
 
+const isMultipleChoice = (type: string) => type === 'mc_th_en' || type === 'listen_th_en'
+
+const EXERCISE_LABEL: Record<string, string> = {
+  mc_th_en: 'Multiple choice',
+  listen_th_en: 'Listening',
+}
+
 interface Props {
   /** /quiz renders this page restricted to mc_th_en only — see decision 1
    * in the practice-mode prompt. Still calls only /practice/*. */
@@ -65,6 +74,7 @@ export default function PracticePage({ restrictToMc }: Props) {
   const [missed, setMissed] = useState<MissedItem[]>([])
   const [summary, setSummary] = useState<PracticeSummary | null>(null)
   const itemStartRef = useRef(performance.now())
+  const { defaultSpeed } = useAudioPrefs()
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -129,7 +139,8 @@ export default function PracticePage({ restrictToMc }: Props) {
         // error handled by interceptor
       }
 
-      setTimeout(advance, 900)
+      // Listening reveals the Thai on answer, so leave time to read it.
+      setTimeout(advance, currentItem.exercise_type === 'listen_th_en' ? 1800 : 900)
     },
     [session, currentItem, mcAnswered, advance]
   )
@@ -171,7 +182,12 @@ export default function PracticePage({ restrictToMc }: Props) {
         return
       }
 
-      if (currentItem.exercise_type === 'mc_th_en') {
+      if (currentItem.exercise_type === 'listen_th_en' && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault()
+        playAudio({ source: { kind: 'card', cardId: currentItem.card_id }, thai: currentItem.thai, speed: defaultSpeed })
+        return
+      }
+      if (isMultipleChoice(currentItem.exercise_type)) {
         if (mcAnswered) return
         if (['1', '2', '3', '4'].includes(e.key)) {
           const idx = Number(e.key) - 1
@@ -190,7 +206,7 @@ export default function PracticePage({ restrictToMc }: Props) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [state, currentItem, mcAnswered, isFlipped, handleChoose, handleRate])
+  }, [state, currentItem, mcAnswered, isFlipped, handleChoose, handleRate, defaultSpeed])
 
   if (state === 'loading') {
     return <div className="text-center py-20 text-gray-600">Loading practice session…</div>
@@ -204,9 +220,15 @@ export default function PracticePage({ restrictToMc }: Props) {
         {summary && (
           <div className="text-gray-600 space-y-1">
             <p>{summary.total} cards practiced</p>
-            {summary.binary_accuracy !== null && (
-              <p>Multiple choice: {Math.round(summary.binary_accuracy * 100)}% correct</p>
-            )}
+            {summary.accuracy_by_exercise_type
+              ? Object.entries(summary.accuracy_by_exercise_type).map(([type, acc]) => (
+                  <p key={type}>
+                    {EXERCISE_LABEL[type] ?? type}: {Math.round(acc * 100)}% correct
+                  </p>
+                ))
+              : summary.binary_accuracy !== null && (
+                  <p>Multiple choice: {Math.round(summary.binary_accuracy * 100)}% correct</p>
+                )}
             {Object.keys(summary.self_rated_rating_distribution).length > 0 && (
               <p>
                 Recall ratings:{' '}
@@ -226,7 +248,7 @@ export default function PracticePage({ restrictToMc }: Props) {
                 <span className="thai font-medium">{item.thai}</span>
                 <span className="text-gray-600"> — </span>
                 <span className="text-green-700">
-                  {item.exercise_type === 'mc_th_en'
+                  {isMultipleChoice(item.exercise_type)
                     ? item.payload.options?.find((o) => o.card_id === item.card_id)?.english
                     : item.english}
                 </span>
@@ -281,7 +303,7 @@ export default function PracticePage({ restrictToMc }: Props) {
           exit={{ opacity: 0, x: -40 }}
           transition={{ duration: 0.2 }}
         >
-          {currentItem.exercise_type === 'mc_th_en' ? (
+          {isMultipleChoice(currentItem.exercise_type) ? (
             <MCQuestion item={currentItem} answered={mcAnswered} onChoose={handleChoose} />
           ) : (
             <FlashCard
@@ -293,10 +315,15 @@ export default function PracticePage({ restrictToMc }: Props) {
         </motion.div>
       </AnimatePresence>
 
-      {currentItem.exercise_type === 'mc_th_en' && !mcAnswered && (
+      {isMultipleChoice(currentItem.exercise_type) && !mcAnswered && (
         <p className="text-center text-sm text-gray-600">
           Press <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">1</kbd>–
           <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">4</kbd> to answer
+          {currentItem.exercise_type === 'listen_th_en' && (
+            <>
+              {' '}· <kbd className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">R</kbd> to replay
+            </>
+          )}
         </p>
       )}
 
