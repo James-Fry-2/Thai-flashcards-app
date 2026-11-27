@@ -15,7 +15,9 @@ For each item produce a JSON object matching this exact schema:
 }}
 
 Rules:
-- "thai": the exact Thai word, phrase, or grammar pattern
+- "thai": the exact Thai word, phrase, or grammar pattern, always in Thai script. Some pages
+  print sentences only in English and romanization: for those, write the Thai script yourself
+  and copy the book's romanization into "romanization". Never put romanization or English in "thai".
 - "romanization": If Paiboon+ romanization for this word or phrase is explicitly written in the
   source text (e.g. "กิน gin1", "สวัสดี sà-wàt-dii", or similar Latin-script pronunciation guide
   alongside the Thai), copy it exactly. If no romanization appears in the source text, return null.

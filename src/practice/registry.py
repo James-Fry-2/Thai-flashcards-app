@@ -78,6 +78,7 @@ def _listen_th_en_eligible(card: Card) -> bool:
     thai = card.thai or ""
     return (
         _th_en_eligible(card)
+        and any("\u0e01" <= ch <= "\u0e5b" for ch in thai)
         and card.card_type != "grammar"
         and "..." not in thai
         and "\u2026" not in thai

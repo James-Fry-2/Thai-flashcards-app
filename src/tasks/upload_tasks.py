@@ -455,7 +455,8 @@ async def _stage_generating(db, upload: Upload) -> None:
     settings = get_settings()
     cards_data = await _generate_cards_chunked(raw_text, settings.card_generation_char_budget)
 
-    integrity_flags = await _apply_integrity_guard(db, upload.id, cards_data)
+    script_flags = await _ensure_thai_script(upload.id, cards_data)
+    integrity_flags = script_flags + await _apply_integrity_guard(db, upload.id, cards_data)
 
     from src.db.services.preferences_service import get_preferences
     prefs = await get_preferences(db)
@@ -506,6 +507,50 @@ async def _stage_tagging(db, upload: Upload) -> None:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+async def _ensure_thai_script(upload_id: int, cards_data: list) -> list[dict]:
+    """Some textbook pages print sentences only in English and romanization,
+    and card generation can copy that into "thai". Convert such cards to Thai
+    script (keeping the book's romanization as the source romanization) and
+    flag them for review; drop any that can't be converted, since a card with
+    no Thai breaks romanization, analysis and speech.
+
+    Mutates cards_data in place. Returns flag specs for _file_integrity_flags.
+    """
+    from src.db.services import thai_script_service as tss
+
+    bad = [c for c in cards_data if not tss.has_thai_script(c.get("thai"))]
+    if not bad:
+        return []
+
+    logger.warning(f"Upload {upload_id}: {len(bad)} generated card(s) have no Thai script — converting")
+    try:
+        results = await tss.to_thai_script([
+            {"text": c.get("thai") or "", "english": c.get("english"), "hint": c.get("example_thai")}
+            for c in bad
+        ])
+    except Exception as exc:
+        logger.warning(f"Upload {upload_id}: Thai-script conversion failed: {exc}")
+        results = [None] * len(bad)
+
+    flags: list[dict] = []
+    drop: set[int] = set()
+    for card, conv in zip(bad, results):
+        original = card.get("thai") or ""
+        if conv is None:
+            logger.warning(f"Upload {upload_id}: dropping card with no Thai script: {original!r}")
+            drop.add(id(card))
+            continue
+        card["thai"] = conv.thai
+        if conv.source == "romanization" and not card.get("romanization"):
+            card["romanization"] = original
+        flags.append({
+            "thai": conv.thai, "field": "thai", "original": original, "repaired": conv.thai,
+            "reason": "converted_to_thai_script", "note": conv.note,
+        })
+    cards_data[:] = [c for c in cards_data if id(c) not in drop]
+    return flags
+
 
 async def _apply_integrity_guard(db, upload_id: int, cards_data: list) -> list[dict]:
     """Normalise/repair LLM-generated card text before romanization is
@@ -590,6 +635,7 @@ async def _file_integrity_flags(db, created_cards: list, flag_specs: list[dict])
                 "original": spec["original"],
                 "repaired": spec["repaired"],
                 "reason": spec["reason"],
+                **({"note": spec["note"]} if spec.get("note") else {}),
             },
             ensure_ascii=False,
         )

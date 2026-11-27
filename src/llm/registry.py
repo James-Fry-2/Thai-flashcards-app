@@ -13,6 +13,7 @@ class LLMTask(str, Enum):
     TRANSLATION_VERIFY = "translation_verify"
     READING_GENERATION = "reading_generation"
     READING_CHECK = "reading_check"
+    THAI_SCRIPT = "thai_script"
 
 
 _registry: Dict[LLMTask, LLMProvider] = {}
@@ -68,6 +69,11 @@ def register_providers(settings) -> None:
             "provider": settings.reading_check_provider,
             "model": settings.reading_check_model,
             "max_tokens": 16000,
+        },
+        LLMTask.THAI_SCRIPT: {
+            "provider": settings.thai_script_provider,
+            "model": settings.thai_script_model,
+            "max_tokens": 8000,
         },
     }
 

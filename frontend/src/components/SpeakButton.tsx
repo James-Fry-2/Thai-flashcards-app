@@ -17,7 +17,16 @@ interface Props {
  * Shift-click plays the other speed. Clicking while it plays stops it.
  * Never lets the click bubble, so it is safe inside a clickable card.
  */
-export default function SpeakButton({ source, thai, size = 16, showSlow = false, className = '' }: Props) {
+const THAI_SCRIPT = /[\u0E01-\u0E5B]/
+
+export default function SpeakButton(props: Props) {
+  // Nothing to say if the text has no Thai in it (e.g. a card whose Thai
+  // field holds romanization by mistake): the server refuses it anyway.
+  if (!THAI_SCRIPT.test(props.thai)) return null
+  return <SpeakButtonInner {...props} />
+}
+
+function SpeakButtonInner({ source, thai, size = 16, showSlow = false, className = '' }: Props) {
   const { key, status, play, stop } = useAudio()
   const { defaultSpeed } = useAudioPrefs()
   const other: Speed = defaultSpeed === 'slow' ? 'normal' : 'slow'

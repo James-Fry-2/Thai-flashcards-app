@@ -66,7 +66,10 @@ export function getState(): AudioState {
 
 const MAX_CACHED = 150
 const urlCache = new Map<string, string>()
-let serverUnavailable = false
+// After a 503 (no TTS key on the server) skip the server for a minute, then
+// try again, so adding a key takes effect without reloading the page.
+const RETRY_SERVER_AFTER_MS = 60_000
+let serverUnavailableUntil = 0
 let warnedServerError = false
 let warnedNoVoice = false
 
@@ -179,7 +182,7 @@ async function playOne(req: PlayRequest, gen: number): Promise<void> {
   const key = audioKey(req)
   setState({ key, status: 'loading' })
 
-  if (!serverUnavailable) {
+  if (Date.now() >= serverUnavailableUntil) {
     abort = new AbortController()
     try {
       const url = await fetchAudio(req, abort.signal)
@@ -190,7 +193,7 @@ async function playOne(req: PlayRequest, gen: number): Promise<void> {
     } catch (err) {
       if (gen !== generation) return
       if (err instanceof ServerUnavailable) {
-        serverUnavailable = true
+        serverUnavailableUntil = Date.now() + RETRY_SERVER_AFTER_MS
       } else if (!warnedServerError) {
         warnedServerError = true
         console.warn('TTS failed, using browser voice', err)

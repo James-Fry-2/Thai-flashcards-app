@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     tts_max_chars: int = 500              # longer text is refused (one line / sentence, not a page)
     tts_price_per_million_chars: float = 16.0  # Azure Neural pay-as-you-go, for the usage estimate
 
+    # Converts romanized/English text that card generation put in a card's
+    # Thai field into Thai script (see src/db/services/thai_script_service.py).
+    thai_script_provider: str = "claude"
+    thai_script_model: str = "claude-sonnet-5-5"
+
     # Embeddings
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
