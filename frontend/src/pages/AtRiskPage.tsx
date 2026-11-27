@@ -75,10 +75,10 @@ export default function AtRiskPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <AlertTriangle size={20} className="text-amber-500" />
+          <AlertTriangle size={20} className="text-amber-700" />
           <h1 className="text-2xl font-bold">At-risk cards</h1>
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-600">
           High-difficulty cards that are significantly overdue — most likely to be forgotten.
         </p>
       </div>
@@ -126,9 +126,9 @@ export default function AtRiskPage() {
 
       {/* Results table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Loading…</div>
+        <div className="text-center py-12 text-gray-600">Loading…</div>
       ) : cards.length === 0 ? (
-        <div className="card text-center py-12 text-gray-400">
+        <div className="card text-center py-12 text-gray-600">
           No at-risk cards match these criteria.
         </div>
       ) : (
@@ -136,12 +136,12 @@ export default function AtRiskPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Thai</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">English</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Deck</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Difficulty</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Overdue</th>
-                <th className="text-left px-4 py-2.5 font-medium text-gray-500">Last reviewed</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Thai</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">English</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Deck</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Difficulty</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Overdue</th>
+                <th className="text-left px-4 py-2.5 font-medium text-gray-600">Last reviewed</th>
               </tr>
             </thead>
             <tbody>
@@ -153,7 +153,7 @@ export default function AtRiskPage() {
                 >
                   <td className="px-4 py-2.5 thai font-medium">{card.thai}</td>
                   <td className="px-4 py-2.5 text-gray-700">{card.english}</td>
-                  <td className="px-4 py-2.5 text-gray-500">{card.deck_name}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{card.deck_name}</td>
                   <td className="px-4 py-2.5">
                     <DifficultyBar value={card.fsrs_difficulty} />
                   </td>
@@ -163,14 +163,14 @@ export default function AtRiskPage() {
                         (card.days_overdue ?? 0) >= 30
                           ? 'text-red-600 font-medium'
                           : (card.days_overdue ?? 0) >= 7
-                          ? 'text-amber-600 font-medium'
+                          ? 'text-amber-700 font-medium'
                           : 'text-gray-600'
                       }
                     >
                       {card.days_overdue != null ? `${card.days_overdue}d` : '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400">{formatRelative(card.last_reviewed)}</td>
+                  <td className="px-4 py-2.5 text-gray-600">{formatRelative(card.last_reviewed)}</td>
                 </tr>
               ))}
             </tbody>

@@ -155,6 +155,7 @@ export interface UserPreferences {
   daily_review_limit: number
   tts_autoplay_on_reveal: boolean
   tts_default_speed: 'normal' | 'slow'
+  card_font: 'learner' | 'classic' | 'realworld' | 'handwriting'
   updated_at: string
 }
 

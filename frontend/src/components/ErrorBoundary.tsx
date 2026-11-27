@@ -25,7 +25,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="max-w-sm w-full text-center space-y-4">
             <p className="text-lg font-semibold text-gray-800">Something went wrong</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               An unexpected error occurred while rendering this page.
             </p>
             <button

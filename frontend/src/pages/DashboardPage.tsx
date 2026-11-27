@@ -40,7 +40,7 @@ export default function DashboardPage() {
       {profile && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card sm:col-span-2 space-y-3">
-            <p className="text-sm font-medium text-gray-500">Progress</p>
+            <p className="text-sm font-medium text-gray-600">Progress</p>
             <XPBar xp={profile.xp} level={profile.level} xpNextLevel={profile.xp_next_level} />
           </div>
           <StreakBadge streak={profile.streak_current} longest={profile.streak_longest} />
@@ -51,7 +51,7 @@ export default function DashboardPage() {
       {catchUp && today && (
         <div className="card border-amber-200 bg-amber-50 space-y-3">
           <div className="flex items-start gap-3">
-            <LifeBuoy size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <LifeBuoy size={20} className="text-amber-700 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold text-amber-900">Catch-up mode</p>
               <p className="text-sm text-amber-800">
@@ -80,21 +80,21 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="text-5xl font-bold text-brand-700">{toDoToday}</span>
-                <span className="text-brand-600 font-medium">cards for today</span>
+                <span className="text-brand-700 font-medium">cards for today</span>
               </div>
               {summary && (
                 <div className="flex gap-4 mt-2 text-sm flex-wrap">
                   {summary.today_breakdown.learning > 0 && (
-                    <span className="text-gray-500">
+                    <span className="text-gray-600">
                       <span className="font-medium text-gray-700">{summary.today_breakdown.learning}</span> learning
                     </span>
                   )}
-                  <span className="text-gray-500">
+                  <span className="text-gray-600">
                     <span className="font-medium text-gray-700">{summary.today_breakdown.reviews}</span> reviews
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-600">
                     <span className="font-medium text-gray-700">{summary.today_breakdown.new}</span> new
-                    {catchUp && <span className="text-amber-600"> (paused)</span>}
+                    {catchUp && <span className="text-amber-700"> (paused)</span>}
                   </span>
                 </div>
               )}
@@ -128,7 +128,7 @@ export default function DashboardPage() {
           {/* De-emphasized deck chips */}
           {decks.filter((d) => d.due_count > 0).length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">Or study by deck</p>
+              <p className="text-xs text-gray-600 mb-1.5">Or study by deck</p>
               <div className="flex gap-1.5 flex-wrap">
                 {decks
                   .filter((d) => d.due_count > 0)
@@ -136,7 +136,7 @@ export default function DashboardPage() {
                     <Link
                       key={d.id}
                       to={`/decks/${d.id}/review`}
-                      className="text-xs text-gray-500 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                      className="text-xs text-gray-600 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
                     >
                       <Zap size={11} />
                       {d.name}
@@ -149,13 +149,13 @@ export default function DashboardPage() {
           {/* De-emphasized topic chips */}
           {dueTopics.length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">Or study by topic</p>
+              <p className="text-xs text-gray-600 mb-1.5">Or study by topic</p>
               <div className="flex gap-1.5 flex-wrap">
                 {dueTopics.map((t) => (
                   <Link
                     key={t.id}
                     to={`/topics/${t.id}/review`}
-                    className="text-xs text-gray-500 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                    className="text-xs text-gray-600 bg-white border border-gray-200 hover:border-brand-200 hover:text-brand-700 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
                   >
                     <Zap size={11} />
                     {t.name}
@@ -168,7 +168,7 @@ export default function DashboardPage() {
       ) : (
         <div className="card bg-green-50 border-green-100 space-y-3">
           <div className="flex items-center gap-3">
-            <CheckCircle size={20} className="text-green-500 shrink-0" />
+            <CheckCircle size={20} className="text-green-700 shrink-0" />
             <p className="font-medium text-green-700">
               {summary && summary.today.new_done + summary.today.reviews_done > 0
                 ? `Done for today: ${summary.today.reviews_done} reviews and ${summary.today.new_done} new cards. Nice work.`
@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
       {profile?.achievements && profile.achievements.length > 0 && (
         <div className="card">
-          <p className="text-sm font-medium text-gray-500 mb-3">Recent Achievements</p>
+          <p className="text-sm font-medium text-gray-600 mb-3">Recent Achievements</p>
           <div className="flex flex-wrap gap-2">
             {profile.achievements.slice(-6).map((a) => (
               <div
@@ -217,7 +217,7 @@ function DailyProgress({ today }: { today: NonNullable<DueSummary['today']> }) {
   const done = today.reviews_done + today.new_done
   if (done === 0) return null
   return (
-    <p className="text-xs text-gray-400 mt-1">
+    <p className="text-xs text-gray-600 mt-1">
       Done so far today: {today.reviews_done} reviews, {today.new_done} new
     </p>
   )

@@ -33,23 +33,23 @@ export default function SuggestedRow({ item, focused, siblingCount, onApply, onI
     >
       <div className="min-w-0 flex-1">
         <div className="text-sm text-gray-700">{describe(item)}</div>
-        <div className="text-xs text-gray-400 mt-0.5">{item.card.english}</div>
+        <div className="text-xs text-gray-600 mt-0.5">{item.card.english}</div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={onApply}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-600 hover:bg-brand-50"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-700 hover:bg-brand-50"
         >
           <Check size={13} /> Apply
         </button>
         {siblingCount > 1 && (
-          <button onClick={onApplyAllForEvent} className="px-2 py-1 rounded text-xs font-medium text-brand-600 hover:bg-brand-50">
+          <button onClick={onApplyAllForEvent} className="px-2 py-1 rounded text-xs font-medium text-brand-700 hover:bg-brand-50">
             Apply all from this correction ({siblingCount})
           </button>
         )}
         <button
           onClick={onIgnore}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-400 hover:bg-gray-100"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-100"
         >
           <IgnoreIcon size={13} /> Not here
         </button>

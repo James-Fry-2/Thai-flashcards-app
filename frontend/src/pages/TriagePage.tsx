@@ -259,7 +259,7 @@ export default function TriagePage() {
             undoMutation.mutate(body)
             toast.dismiss(t.id)
           }}
-          className="font-semibold text-brand-600 hover:underline"
+          className="font-semibold text-brand-700 hover:underline"
         >
           Undo
         </button>
@@ -411,7 +411,7 @@ export default function TriagePage() {
   }, [lastAction])
 
   if (isLoading || !queue) {
-    return <div className="text-gray-400 text-sm">Loading triage queue…</div>
+    return <div className="text-gray-600 text-sm">Loading triage queue…</div>
   }
 
   return (
@@ -420,7 +420,7 @@ export default function TriagePage() {
         <h1 className="text-xl font-semibold text-gray-900">Triage</h1>
         <button
           onClick={() => setShowShortcuts(true)}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+          className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-600"
         >
           <HelpCircle size={14} /> Shortcuts (?)
         </button>
@@ -433,11 +433,11 @@ export default function TriagePage() {
             onClick={() => { setTab(t.key); setFocusedIndex(0) }}
             className={clsx(
               'px-3 py-2 text-sm font-medium border-b-2 -mb-px flex items-center gap-1.5',
-              tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-600 hover:text-gray-700'
             )}
           >
             {t.label}
-            <span className="px-1.5 py-0.5 rounded-full text-[11px] bg-gray-100 text-gray-500">
+            <span className="px-1.5 py-0.5 rounded-full text-[11px] bg-gray-100 text-gray-700">
               {queue.counts[t.key]}
             </span>
           </button>
@@ -472,7 +472,7 @@ export default function TriagePage() {
             <button className="hover:underline" onClick={() => { setTab('suggested'); setPropagationBanner(null) }}>
               Review in Suggested
             </button>
-            <button className="text-amber-600 hover:underline" onClick={() => setPropagationBanner(null)}>
+            <button className="text-amber-700 hover:underline" onClick={() => setPropagationBanner(null)}>
               Ignore
             </button>
           </div>
@@ -508,7 +508,7 @@ export default function TriagePage() {
           >
             <Sparkles size={13} /> Fill all with AI ({compoundItems.length})
           </button>
-          <label className="flex items-center gap-1.5 text-xs text-gray-500">
+          <label className="flex items-center gap-1.5 text-xs text-gray-600">
             <input type="checkbox" checked={groupByMissingPart} onChange={(e) => setGroupByMissingPart(e.target.checked)} />
             Group by missing part
           </label>
@@ -523,7 +523,7 @@ export default function TriagePage() {
             (['likely_error', 'unsure', 'unchecked', 'likely_ok'] as const).map((bucket) =>
               translationBuckets[bucket].length === 0 ? null : (
                 <div key={bucket}>
-                  <div className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 bg-gray-50">
+                  <div className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50">
                     {bucket === 'unchecked' ? 'Unchecked' : bucket === 'likely_error' ? 'Likely error' : bucket === 'unsure' ? 'Unsure' : 'Likely OK'}
                   </div>
                   {translationBuckets[bucket].map((item) => {
@@ -630,7 +630,7 @@ export default function TriagePage() {
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
         <span>Kept: {summary.kept}</span>
         <span>Corrected: {summary.corrected}</span>
         <span>Glosses filled: {summary.glossesFilled}</span>
@@ -664,5 +664,5 @@ export default function TriagePage() {
 }
 
 function EmptyState({ label }: { label: string }) {
-  return <div className="px-4 py-10 text-center text-sm text-gray-400">{label}</div>
+  return <div className="px-4 py-10 text-center text-sm text-gray-600">{label}</div>
 }

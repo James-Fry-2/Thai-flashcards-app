@@ -15,7 +15,7 @@ export default function MCQuestion({ item, answered, onChoose }: Props) {
       <div className="card flex flex-col items-center justify-center gap-3 py-10">
         <p className="text-5xl font-bold thai text-gray-900">{item.thai}</p>
         {item.romanization && (
-          <p className="text-lg text-gray-400">{item.romanization}</p>
+          <p className="text-lg text-gray-600">{item.romanization}</p>
         )}
       </div>
 
@@ -35,7 +35,7 @@ export default function MCQuestion({ item, answered, onChoose }: Props) {
                 !showResult && 'border-gray-200 hover:border-brand-400 hover:bg-brand-50',
                 showResult && isTarget && 'border-green-500 bg-green-50 text-green-800',
                 showResult && isChosen && !isTarget && 'border-red-500 bg-red-50 text-red-800',
-                showResult && !isChosen && !isTarget && 'border-gray-200 text-gray-400'
+                showResult && !isChosen && !isTarget && 'border-gray-200 text-gray-600'
               )}
             >
               <span className="text-xs opacity-60">[{i + 1}]</span>

@@ -15,7 +15,7 @@ function MatchBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
     exact: 'bg-green-100 text-green-700',
     prefix: 'bg-blue-100 text-blue-700',
-    substring: 'bg-gray-100 text-gray-600',
+    substring: 'bg-gray-100 text-gray-700',
     semantic: 'bg-purple-100 text-purple-700',
   }
   const labels: Record<string, string> = {
@@ -79,7 +79,7 @@ function SaveModal({ query, cardIds, onClose }: SaveModalProps) {
           <h2 className="text-lg font-semibold">
             {result ? 'Topic saved' : 'Save as topic'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-600">
             <X size={18} />
           </button>
         </div>
@@ -118,7 +118,7 @@ function SaveModal({ query, cardIds, onClose }: SaveModalProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Description <span className="font-normal text-gray-400">(optional)</span>
+                Description <span className="font-normal text-gray-600">(optional)</span>
               </label>
               <input
                 type="text"
@@ -127,7 +127,7 @@ function SaveModal({ query, cardIds, onClose }: SaveModalProps) {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-600">
               {cardIds.length} card{cardIds.length !== 1 ? 's' : ''} will be added.
               If a topic with this name already exists, cards will be merged into it.
             </p>
@@ -169,7 +169,7 @@ function GroupingRow({ item, kind, onStudy, studyLoading }: GroupingRowProps) {
         {kind === 'topic' ? (
           <Link
             to={`/topics/${item.id}`}
-            className="font-medium text-gray-800 hover:text-brand-600 truncate"
+            className="font-medium text-gray-800 hover:text-brand-700 truncate"
           >
             {item.name}
           </Link>
@@ -177,7 +177,7 @@ function GroupingRow({ item, kind, onStudy, studyLoading }: GroupingRowProps) {
           <span className="font-medium text-gray-800 truncate">{item.name}</span>
         )}
         <MatchBadge type={item.match_type === 'semantic' ? 'semantic' : 'match'} />
-        <span className="text-xs text-gray-400">{item.card_count} cards</span>
+        <span className="text-xs text-gray-600">{item.card_count} cards</span>
       </div>
       <button
         onClick={onStudy}
@@ -345,18 +345,18 @@ export default function SearchPage() {
 
       {/* Empty / loading / no-query states */}
       {!q.trim() && (
-        <div className="card text-center py-16 text-gray-400 space-y-2">
+        <div className="card text-center py-16 text-gray-600 space-y-2">
           <p className="text-lg font-medium text-gray-600">Find something to study</p>
           <p className="text-sm">Search topics, tags, or browse matching cards to start a session.</p>
         </div>
       )}
 
       {q.trim() && isLoading && !data && (
-        <div className="text-center py-16 text-gray-400">Searching…</div>
+        <div className="text-center py-16 text-gray-600">Searching…</div>
       )}
 
       {q.trim() && !isLoading && data && !hasGroupings && !hasAdhoc && (
-        <div className="card text-center py-16 text-gray-400">
+        <div className="card text-center py-16 text-gray-600">
           Nothing matches <span className="font-medium text-gray-600">"{q}"</span> yet.
         </div>
       )}
@@ -364,13 +364,13 @@ export default function SearchPage() {
       {/* GROUPINGS */}
       {hasGroupings && (
         <section className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-600">
             Topics &amp; Tags
           </h2>
 
           {(data?.groupings.topics.length ?? 0) > 0 && (
             <div className="card p-3 space-y-0.5">
-              <div className="flex items-center gap-1.5 px-1 mb-1 text-xs font-medium text-gray-500">
+              <div className="flex items-center gap-1.5 px-1 mb-1 text-xs font-medium text-gray-600">
                 <Layers size={12} /> Topics
               </div>
               {data!.groupings.topics.map((item) => (
@@ -387,7 +387,7 @@ export default function SearchPage() {
 
           {(data?.groupings.tags.length ?? 0) > 0 && (
             <div className="card p-3 space-y-0.5">
-              <div className="flex items-center gap-1.5 px-1 mb-1 text-xs font-medium text-gray-500">
+              <div className="flex items-center gap-1.5 px-1 mb-1 text-xs font-medium text-gray-600">
                 <Tag size={12} /> Tags
               </div>
               {data!.groupings.tags.map((item) => (
@@ -407,7 +407,7 @@ export default function SearchPage() {
       {/* AD-HOC SET */}
       {hasAdhoc && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-3">
             Ad-hoc set
           </h2>
           <div className="card space-y-4">
@@ -416,7 +416,7 @@ export default function SearchPage() {
                 {data!.ad_hoc.total} card{data!.ad_hoc.total !== 1 ? 's' : ''} match &ldquo;{q}&rdquo;
               </p>
               {data!.ad_hoc.truncated && (
-                <p className="text-xs text-amber-600 mt-0.5">
+                <p className="text-xs text-amber-700 mt-0.5">
                   Showing the top {data!.ad_hoc.total} matches (more cards matched but were capped).
                 </p>
               )}
@@ -430,7 +430,7 @@ export default function SearchPage() {
                   </span>
                 ))}
                 {data!.ad_hoc.untagged_count > 0 && (
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
                     untagged {data!.ad_hoc.untagged_count}
                   </span>
                 )}
@@ -461,18 +461,18 @@ export default function SearchPage() {
       {hasCards && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-600">
               Cards
             </h2>
             {data!.ad_hoc.truncated && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-600">
                 {data!.cards.length} shown
               </span>
             )}
           </div>
           <div className="overflow-hidden rounded-xl border border-gray-100">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Thai</th>
                   <th className="px-4 py-3 text-left">Romanization</th>
@@ -489,11 +489,11 @@ export default function SearchPage() {
                     className="bg-white hover:bg-gray-50 cursor-pointer"
                   >
                     <td className="px-4 py-3 thai font-medium text-base">{card.thai}</td>
-                    <td className="px-4 py-3 text-gray-400">{card.romanization}</td>
+                    <td className="px-4 py-3 text-gray-600">{card.romanization}</td>
                     <td className="px-4 py-3 text-gray-700">{card.english}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
                           {card.card_type}
                         </span>
                         {card.topics?.map((t) => (
@@ -502,7 +502,7 @@ export default function SearchPage() {
                           </span>
                         ))}
                         {card.tags?.map((t) => (
-                          <span key={t.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                          <span key={t.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
                             {t.name}
                           </span>
                         ))}

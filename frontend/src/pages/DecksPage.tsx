@@ -46,7 +46,7 @@ export default function DecksPage() {
         >
           <input
             autoFocus
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="flex-1 border border-gray-500 rounded-lg px-3 py-2 text-sm"
             placeholder="Deck name…"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -61,9 +61,9 @@ export default function DecksPage() {
       )}
 
       {isLoading ? (
-        <p className="text-gray-400">Loading…</p>
+        <p className="text-gray-600">Loading…</p>
       ) : decks.length === 0 ? (
-        <div className="card text-center py-16 text-gray-400">
+        <div className="card text-center py-16 text-gray-600">
           <BookOpen size={40} className="mx-auto mb-3 opacity-30" />
           <p>No decks yet. Upload some notes or create a deck to start.</p>
         </div>
@@ -113,16 +113,16 @@ function DeckCard({ deck }: { deck: Deck }) {
         <div>
           <h2 className="font-semibold text-lg">{deck.name}</h2>
           {deck.description && (
-            <p className="text-sm text-gray-500 mt-0.5">{deck.description}</p>
+            <p className="text-sm text-gray-600 mt-0.5">{deck.description}</p>
           )}
-          <p className="text-xs text-gray-400 mt-2">{deck.card_count} cards</p>
+          <p className="text-xs text-gray-600 mt-2">{deck.card_count} cards</p>
         </div>
         <div className="flex items-center gap-2">
           {deck.due_count > 0 && (
             <Link
               to={`/decks/${deck.id}/review`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 bg-brand-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-brand-700 transition-colors"
+              className="flex items-center gap-1 bg-brand-500 text-brand-950 text-xs px-3 py-1.5 rounded-lg hover:bg-brand-400 transition-colors"
             >
               <Zap size={12} />
               {deck.due_count} due
@@ -134,7 +134,7 @@ function DeckCard({ deck }: { deck: Deck }) {
             className={`flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${
               confirming
                 ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-                : 'border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-500'
+                : 'border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600'
             }`}
             title={confirming ? 'Click again to confirm' : 'Delete deck'}
           >

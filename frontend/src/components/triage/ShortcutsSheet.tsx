@@ -24,7 +24,7 @@ export default function ShortcutsSheet({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">Keyboard shortcuts</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-600">
             <X size={16} />
           </button>
         </div>
@@ -32,7 +32,7 @@ export default function ShortcutsSheet({ onClose }: { onClose: () => void }) {
           {SHORTCUTS.map(([key, desc]) => (
             <div key={key} className="flex items-center justify-between text-sm">
               <dt>
-                <kbd className="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-300 text-xs font-mono text-gray-700">
+                <kbd className="px-1.5 py-0.5 rounded bg-gray-100 border border-gray-500 text-xs font-mono text-gray-700">
                   {key}
                 </kbd>
               </dt>

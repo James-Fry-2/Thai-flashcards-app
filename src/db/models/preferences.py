@@ -29,6 +29,10 @@ class UserPreferences(Base):
     tts_default_speed: Mapped[str] = mapped_column(
         String(10), nullable=False, default="normal", server_default="normal"
     )
+    # Thai card-face typeface (brand/BRAND-SYSTEM.md §3). Looped by default for new learners.
+    card_font: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="learner", server_default="learner"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )

@@ -49,11 +49,11 @@ export default function TextReaderPage() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  if (isLoading) return <div className="text-center py-20 text-gray-400">Loading…</div>
+  if (isLoading) return <div className="text-center py-20 text-gray-600">Loading…</div>
   if (isError || !text) {
     return (
       <div className="text-center py-20 space-y-3">
-        <p className="text-gray-500">This text isn&apos;t available.</p>
+        <p className="text-gray-600">This text isn&apos;t available.</p>
         <Link to="/read" className="btn-secondary">Back to reading</Link>
       </div>
     )
@@ -83,19 +83,19 @@ export default function TextReaderPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 text-sm">
-        <Link to="/read" className="flex items-center gap-1 text-gray-400 hover:text-gray-600">
+        <Link to="/read" className="flex items-center gap-1 text-gray-600 hover:text-gray-600">
           <ArrowLeft size={14} /> Read
         </Link>
         <div className="text-center min-w-0">
           <span className="block font-medium text-gray-700 truncate">{text.title}</span>
-          <span className="block text-xs text-gray-400 truncate">
+          <span className="block text-xs text-gray-600 truncate">
             {text.kind === 'dialogue' ? 'Dialogue' : 'Example sentences'}
             {text.scope_label && <> · {text.scope_label}</>}
           </span>
         </div>
         <button
           onClick={() => window.confirm('Delete this text?') && remove.mutate()}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50"
+          className="p-1.5 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50"
           aria-label="Delete text"
         >
           <Trash2 size={16} />
@@ -134,14 +134,14 @@ export default function TextReaderPage() {
                     setPlayingLine,
                   )
                 }}
-                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 mr-auto"
+                className="text-xs text-gray-600 hover:text-gray-700 flex items-center gap-1 mr-auto"
               >
                 {playingLine !== null ? <Square size={13} /> : <Play size={13} />}
                 {playingLine !== null ? 'Stop' : text.kind === 'dialogue' ? 'Play dialogue' : 'Play all'}
               </button>
               <button
                 onClick={toggleRoman}
-                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                className="text-xs text-gray-600 hover:text-gray-700 flex items-center gap-1"
               >
                 <Languages size={13} />
                 {showRoman ? 'Hide romanization' : 'Show romanization'}
@@ -151,7 +151,7 @@ export default function TextReaderPage() {
                   setShowAll((v) => !v)
                   setShown(new Set())
                 }}
-                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                className="text-xs text-gray-600 hover:text-gray-700 flex items-center gap-1"
               >
                 {showAll ? <EyeOff size={13} /> : <Eye size={13} />}
                 {showAll ? 'Hide all English' : 'Show all English'}
@@ -161,7 +161,7 @@ export default function TextReaderPage() {
             {groups.map((group, g) => (
               <div key={g} className={text.kind === 'sentences' ? 'pt-3 first:pt-0' : ''}>
                 {group.word && (
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">
                     <span className="font-thai normal-case text-sm text-gray-600">{group.word}</span>
                   </p>
                 )}
@@ -199,11 +199,11 @@ export default function TextReaderPage() {
                             <p className="text-sm text-gray-600 -mt-1 mb-0.5">{line.romanization}</p>
                           )}
                           {english ? (
-                            <p className="text-sm text-gray-500">{line.english}</p>
+                            <p className="text-sm text-gray-600">{line.english}</p>
                           ) : (
                             <button
                               onClick={() => toggleLine(i)}
-                              className="text-xs text-gray-400 hover:text-gray-600"
+                              className="text-xs text-gray-600 hover:text-gray-600"
                             >
                               Show English
                             </button>
@@ -232,7 +232,7 @@ export default function TextReaderPage() {
               }}
             />
           ) : (
-            <div className="card text-sm text-gray-400 hidden lg:block">
+            <div className="card text-sm text-gray-600 hidden lg:block">
               Tap a Thai word to look it up. Underlined words aren&apos;t in your cards yet.
             </div>
           )}
@@ -245,7 +245,7 @@ export default function TextReaderPage() {
 function CheckBadge({ check }: { check: GeneratedText['check'] }) {
   if (!check?.checked) {
     return (
-      <span className="flex items-center gap-1 text-xs text-amber-600" title="The checking pass didn't run for this text">
+      <span className="flex items-center gap-1 text-xs text-amber-700" title="The checking pass didn't run for this text">
         <ShieldAlert size={13} /> Not checked
       </span>
     )

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 100" role="img" aria-label="baimai">
+  <title>baimai</title>
+  
+  <g fill="none" stroke="#91d4a0" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 12 V88"/><circle cx="34" cy="68" r="20"/>
+    <circle cx="92" cy="68" r="20"/><path d="M112 50 V88"/>
+    <path d="M136 50 V88"/>
+    <path d="M160 50 V88 M160 64 Q160 48 174 48 Q188 48 188 64 V88 M188 64 Q188 48 202 48 Q216 48 216 64 V88"/>
+    <circle cx="248" cy="68" r="20"/><path d="M268 50 V88"/>
+    <path d="M292 50 V88"/>
+  </g>
+  <path fill="#3da35d" transform="rotate(18 136 22)" d="M136 33 C127 28 127 16 136 9 C145 16 145 28 136 33 Z"/>
+  <path fill="#3da35d" transform="rotate(18 292 22)" d="M292 33 C283 28 283 16 292 9 C301 16 301 28 292 33 Z"/>
+</svg>

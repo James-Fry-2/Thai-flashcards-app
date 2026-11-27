@@ -42,7 +42,7 @@ export default function CompoundGapRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="thai text-lg font-medium text-gray-900">{item.thai}</span>
-          <span className="text-sm text-gray-500">{item.english}</span>
+          <span className="text-sm text-gray-600">{item.english}</span>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-1.5">
           {item.parts.map((p) => {
@@ -67,12 +67,12 @@ export default function CompoundGapRow({
                       if (e.key === 'Escape') onCancelEditGloss()
                     }}
                     placeholder="gloss…"
-                    className="mt-0.5 w-24 text-xs px-1 py-0.5 rounded border border-gray-300 focus:outline-none focus:ring-1 focus:ring-brand-400"
+                    className="mt-0.5 w-24 text-xs px-1 py-0.5 rounded border border-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-400"
                   />
                 ) : (
                   <button
                     onClick={() => onStartEditGloss(p.thai)}
-                    className={clsx('mt-0.5 block', isMissing ? 'text-amber-700 font-medium' : 'text-gray-500')}
+                    className={clsx('mt-0.5 block', isMissing ? 'text-amber-700 font-medium' : 'text-gray-600')}
                   >
                     {p.gloss || '— add gloss —'}
                   </button>
@@ -86,7 +86,7 @@ export default function CompoundGapRow({
         <button
           onClick={onFillWithAi}
           disabled={filling}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-50"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50"
         >
           <Sparkles size={13} /> {filling ? 'Filling…' : 'Fill with AI'}
         </button>
@@ -104,7 +104,7 @@ export default function CompoundGapRow({
         </button>
         <button
           onClick={onSkip}
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-400 hover:bg-gray-100"
+          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-100"
         >
           <SkipIcon size={13} /> Skip
         </button>

@@ -1,8 +1,10 @@
-# Dek-Kard
+<p align="center"><img src="brand/logo/lockup.svg" alt="Baimai" height="72"></p>
+
+# Baimai
 
 **Turn Thai textbooks, worksheets and photos of handwritten notes into spaced-repetition flashcards that you can check and correct.**
 
-Dek-Kard (เด็กการ์ด, "kid card") is a self-hosted web app for learners of Thai. Upload a PDF or a photo and it OCRs the Thai text, uses Claude to pull out vocabulary and example sentences, adds romanization, compound-word breakdowns and confusable-word warnings, then schedules review with the FSRS algorithm. Cards the system is unsure about go to a triage queue so you can check them before you learn them.
+Baimai (ใบไม้, "leaf", formerly Dek-Kard) is a self-hosted web app for learners of Thai. ใบ (bai) is also the Thai word for counting cards. Upload a PDF or a photo and it OCRs the Thai text, uses Claude to pull out vocabulary and example sentences, adds romanization, compound-word breakdowns and confusable-word warnings, then schedules review with the FSRS algorithm. Cards the system is unsure about go to a triage queue so you can check them before you learn them.
 
 [![CI](https://github.com/James-Fry-2/Thai-flashcards-app/actions/workflows/ci.yml/badge.svg)](https://github.com/James-Fry-2/Thai-flashcards-app/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/James-Fry-2/Thai-flashcards-app)](https://github.com/James-Fry-2/Thai-flashcards-app/releases/latest)

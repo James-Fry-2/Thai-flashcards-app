@@ -48,7 +48,7 @@ export default function SpeakButton({ source, thai, size = 16, showSlow = false,
         type="button"
         onClick={(e) => handle(e, e.shiftKey ? other : mainSpeed)}
         className={`p-1.5 rounded-lg transition-colors ${
-          mainActive ? 'text-brand-600 bg-brand-50' : 'text-gray-400 hover:text-brand-600 hover:bg-brand-50'
+          mainActive ? 'text-brand-700 bg-brand-50' : 'text-gray-600 hover:text-brand-700 hover:bg-brand-50'
         }`}
         title={`Listen (Shift-click: ${other})`}
         aria-label={mainActive ? 'Stop audio' : 'Play Thai audio'}
@@ -60,7 +60,7 @@ export default function SpeakButton({ source, thai, size = 16, showSlow = false,
           type="button"
           onClick={(e) => handle(e, other)}
           className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wide transition-colors ${
-            activeSpeed === other ? 'text-brand-600 bg-brand-50' : 'text-gray-400 hover:text-brand-600 hover:bg-brand-50'
+            activeSpeed === other ? 'text-brand-700 bg-brand-50' : 'text-gray-600 hover:text-brand-700 hover:bg-brand-50'
           }`}
           title={`Listen ${other}`}
           aria-label={`Play Thai audio ${other}`}

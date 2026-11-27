@@ -1,6 +1,15 @@
 # Changelog
 
-All notable changes to Dek-Kard are listed here. Versions follow [Semantic Versioning](https://semver.org).
+All notable changes to Baimai (formerly Dek-Kard) are listed here. Versions follow [Semantic Versioning](https://semver.org).
+
+## [Unreleased]
+
+### Brand
+- The app is now called **Baimai** (ใบไม้, "leaf"). The brand system, tokens, logo and decision log are in `brand/`.
+- New look: a bright leaf-green palette on a ruled-paper background, rounded Mitr headings, chunky buttons, and Bai the leaf in the nav bar.
+- Text contrast now meets WCAG 2.2 AA throughout. About 430 too-light text colours were darkened, and form-control borders now reach 3:1.
+- Review and practice grade buttons: only "Good" is filled, and "Again" is marked with a cross as well as colour.
+- New setting: **Thai card font**. Choose Learner (looped, the default), Classic, Real-world (loopless) or Handwriting.
 
 ## [1.0.0] — 2026-11-22
 

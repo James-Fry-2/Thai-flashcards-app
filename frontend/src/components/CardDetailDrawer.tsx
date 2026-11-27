@@ -302,7 +302,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
             {navStack.length > 0 && (
               <button
                 onClick={navigateBack}
-                className="mt-1 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0"
+                className="mt-1 p-1 rounded text-gray-600 hover:text-gray-600 hover:bg-gray-100 shrink-0"
                 title="Back"
               >
                 <ChevronLeft size={16} />
@@ -315,12 +315,12 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                     <p className="thai text-2xl font-medium">{card.thai}</p>
                     <SpeakButton source={{ kind: 'card', cardId: card.id }} thai={card.thai} showSlow />
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{card.english}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">{card.english}</p>
                   {card.romanization && (
-                    <p className="text-xs text-gray-400 mt-0.5">{card.romanization}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">{card.romanization}</p>
                   )}
                   {lastCorrection && (
-                    <p className="text-[11px] text-gray-400 mt-1">
+                    <p className="text-[11px] text-gray-600 mt-1">
                       Last changed: {ACTION_LABEL[lastCorrection.action] ?? lastCorrection.action} on{' '}
                       {new Date(lastCorrection.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                     </p>
@@ -333,7 +333,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
           </div>
           <button
             onClick={onClose}
-            className="ml-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            className="ml-4 p-1.5 rounded-lg text-gray-600 hover:text-gray-600 hover:bg-gray-100"
           >
             <X size={18} />
           </button>
@@ -385,7 +385,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                   <button
                     onClick={() => deleteOverride.mutate('translation')}
                     disabled={deleteOverride.isLoading}
-                    className="flex items-center gap-1 text-brand-600 hover:text-brand-800 shrink-0 ml-3"
+                    className="flex items-center gap-1 text-brand-700 hover:text-brand-800 shrink-0 ml-3"
                   >
                     <RotateCcw size={11} /> Revert
                   </button>
@@ -394,12 +394,12 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
 
               {/* Tags section */}
               <section>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                   Tags
                 </h3>
                 <PillGroup
                   pills={card.tags}
-                  colorClass="bg-gray-100 text-gray-600"
+                  colorClass="bg-gray-100 text-gray-700"
                   onRemove={(id) => removeTag.mutate(id)}
                 />
                 <TagCombobox
@@ -412,7 +412,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
 
               {/* Topics section */}
               <section>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                   Topics
                 </h3>
                 <PillGroup
@@ -430,7 +430,7 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
               {/* Card details */}
               {(card.example_thai || card.example_english) && (
                 <section>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                     Example
                   </h3>
                   {card.example_thai && (
@@ -445,14 +445,14 @@ export default function CardDetailDrawer({ cardId: initialCardId, deckId, onClos
                     </p>
                   )}
                   {card.example_english && (
-                    <p className="text-sm text-gray-500 mt-0.5">{card.example_english}</p>
+                    <p className="text-sm text-gray-600 mt-0.5">{card.example_english}</p>
                   )}
                 </section>
               )}
 
               {card.notes && (
                 <section>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                     Notes
                   </h3>
                   <p className="text-sm text-gray-600">{card.notes}</p>
@@ -530,7 +530,7 @@ function PillGroup({
   onRemove: (id: number) => void
 }) {
   if (pills.length === 0) {
-    return <p className="text-xs text-gray-400 mb-2">None</p>
+    return <p className="text-xs text-gray-600 mb-2">None</p>
   }
   return (
     <div className="flex flex-wrap gap-1.5 mb-2">
@@ -542,7 +542,7 @@ function PillGroup({
           {p.name}
           <button
             onClick={() => onRemove(p.id)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 hover:text-red-500"
+            className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 hover:text-red-600"
             title={`Remove ${p.name}`}
           >
             <X size={11} />
@@ -599,7 +599,7 @@ function TagCombobox({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+        className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700 transition-colors"
       >
         <Plus size={12} /> Add tag
       </button>
@@ -617,7 +617,7 @@ function TagCombobox({
           if (e.key === 'Enter' && showCreate) create()
         }}
         placeholder="Search or create tag…"
-        className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        className="w-full text-xs border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
         disabled={isAdding}
       />
       {(filtered.length > 0 || showCreate) && (
@@ -629,14 +629,14 @@ function TagCombobox({
                 onClick={() => select(tag)}
               >
                 <span>{tag.name}</span>
-                <span className="text-gray-400">{tag.card_count} cards</span>
+                <span className="text-gray-600">{tag.card_count} cards</span>
               </button>
             </li>
           ))}
           {showCreate && (
             <li>
               <button
-                className="w-full text-left px-3 py-2 text-xs text-brand-600 hover:bg-brand-50 font-medium"
+                className="w-full text-left px-3 py-2 text-xs text-brand-700 hover:bg-brand-50 font-medium"
                 onClick={create}
               >
                 Create new tag: "{query.trim()}"
@@ -647,7 +647,7 @@ function TagCombobox({
       )}
       <button
         onClick={() => { setOpen(false); setQuery('') }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
       >
         <X size={12} />
       </button>
@@ -703,7 +703,7 @@ function TopicCombobox({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+        className="inline-flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700 transition-colors"
       >
         <Plus size={12} /> Add topic
       </button>
@@ -721,7 +721,7 @@ function TopicCombobox({
           if (e.key === 'Enter' && showCreate) create()
         }}
         placeholder="Search or create topic…"
-        className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        className="w-full text-xs border border-gray-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
         disabled={isAdding}
       />
       {(filtered.length > 0 || showCreate) && (
@@ -733,14 +733,14 @@ function TopicCombobox({
                 onClick={() => select(topic)}
               >
                 <span>{topic.name}</span>
-                <span className="text-gray-400">{topic.card_count} cards</span>
+                <span className="text-gray-600">{topic.card_count} cards</span>
               </button>
             </li>
           ))}
           {showCreate && (
             <li>
               <button
-                className="w-full text-left px-3 py-2 text-xs text-brand-600 hover:bg-brand-50 font-medium"
+                className="w-full text-left px-3 py-2 text-xs text-brand-700 hover:bg-brand-50 font-medium"
                 onClick={create}
               >
                 Create new topic: "{query.trim()}"
@@ -751,7 +751,7 @@ function TopicCombobox({
       )}
       <button
         onClick={() => { setOpen(false); setQuery('') }}
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
       >
         <X size={12} />
       </button>
@@ -796,12 +796,12 @@ function RomanizationSection({
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
           Romanization
         </h3>
         <button
           onClick={startEdit}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+          className="flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700 transition-colors"
           title="Set manual override"
         >
           <Pencil size={11} />
@@ -821,19 +821,19 @@ function RomanizationSection({
             }}
             placeholder="Manual romanization…"
             disabled={isSaving}
-            className="flex-1 text-xs border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="flex-1 text-xs border border-gray-500 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <button
             onClick={commit}
             disabled={isSaving}
-            className="p-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50"
+            className="p-1.5 rounded-lg bg-brand-500 text-brand-950 hover:bg-brand-400 disabled:opacity-50"
             title="Save"
           >
             <Check size={13} />
           </button>
           <button
             onClick={() => setEditing(false)}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"
+            className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
             title="Cancel"
           >
             <X size={13} />
@@ -846,7 +846,7 @@ function RomanizationSection({
           {schemes.map((s) =>
             s.value ? (
               <div key={s.label} className="flex items-baseline gap-2">
-                <dt className="text-[10px] font-medium text-gray-400 w-24 shrink-0">{s.label}</dt>
+                <dt className="text-[10px] font-medium text-gray-600 w-24 shrink-0">{s.label}</dt>
                 <dd
                   className={`text-xs ${
                     s.isManual ? 'text-brand-700 font-medium' : 'text-gray-700'
@@ -859,7 +859,7 @@ function RomanizationSection({
           )}
         </dl>
       ) : (
-        <p className="text-xs text-gray-400">No romanization stored yet.</p>
+        <p className="text-xs text-gray-600">No romanization stored yet.</p>
       )}
     </section>
   )
@@ -868,7 +868,7 @@ function RomanizationSection({
 function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; tone?: string; [key: string]: unknown }[] }) {
   return (
     <section>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+      <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
         Script Analysis
       </h3>
       <div className="flex flex-wrap gap-2">
@@ -879,7 +879,7 @@ function ScriptAnalysisSection({ syllables }: { syllables: { syllable?: string; 
           >
             <p className="thai text-base">{String(s.syllable ?? '')}</p>
             {s.tone && (
-              <p className="text-xs text-gray-400 mt-0.5">{String(s.tone)}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{String(s.tone)}</p>
             )}
           </div>
         ))}
@@ -928,7 +928,7 @@ function TranslationFlag({
       </p>
 
       <div className="mb-3">
-        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+        <p className="text-[10px] font-medium text-gray-600 uppercase tracking-wide mb-1">
           From your materials
         </p>
         <p className="text-sm font-medium text-gray-800">{english}</p>
@@ -936,7 +936,7 @@ function TranslationFlag({
 
       {candidates.length > 0 && (
         <div className="mb-3">
-          <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide mb-1">
+          <p className="text-[10px] font-medium text-gray-600 uppercase tracking-wide mb-1">
             Dictionary suggests
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -975,7 +975,7 @@ function TranslationFlag({
               ? 'bg-red-50 text-red-700'
               : aiResult.verdict === 'likely_ok'
                 ? 'bg-green-50 text-green-700'
-                : 'bg-gray-100 text-gray-600'
+                : 'bg-gray-100 text-gray-700'
           }`}
         >
           <span className="font-medium">
@@ -1031,26 +1031,26 @@ function OpenFlagsBanner({
   return (
     <section className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 space-y-2.5">
       <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
-        <Flag size={12} className="text-amber-500" /> Your open flags
+        <Flag size={12} className="text-amber-700" /> Your open flags
       </h3>
       {flags.map((f) => (
         <div key={f.id} className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <span className="text-xs font-medium text-gray-700 capitalize">{f.target}</span>
-            {f.note && <p className="text-xs text-gray-500 mt-0.5">{f.note}</p>}
+            {f.note && <p className="text-xs text-gray-600 mt-0.5">{f.note}</p>}
           </div>
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => onDismiss(f.id)}
               disabled={isSaving}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-gray-600 hover:text-gray-600"
             >
               Dismiss
             </button>
             <button
               onClick={() => onResolve(f.id)}
               disabled={isSaving}
-              className="text-xs text-brand-600 hover:text-brand-800 font-medium"
+              className="text-xs text-brand-700 hover:text-brand-800 font-medium"
             >
               Resolve
             </button>
@@ -1125,7 +1125,7 @@ function BreakdownSection({
   return (
     <section>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
           Breakdown
         </h3>
         <div className="flex items-center gap-2">
@@ -1133,7 +1133,7 @@ function BreakdownSection({
             <button
               onClick={onRevert}
               disabled={isRevertSaving}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700 transition-colors"
               title="Revert to dictionary breakdown"
             >
               <RotateCcw size={11} /> Revert
@@ -1141,7 +1141,7 @@ function BreakdownSection({
           )}
           <button
             onClick={onOpenCorrection}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-600 hover:text-brand-700 transition-colors"
             title="Correct this breakdown"
           >
             <Pencil size={11} /> Correct
@@ -1150,11 +1150,11 @@ function BreakdownSection({
       </div>
 
       {suppressed ? (
-        <p className="text-xs text-gray-400">You marked this as not a compound.</p>
+        <p className="text-xs text-gray-600">You marked this as not a compound.</p>
       ) : parts.length > 0 ? (
         <CompoundBreakdown parts={parts} sourceIsUser={sourceIsUser} />
       ) : (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-gray-600">
           This word decomposes, but not every part has a clear gloss, so the breakdown isn't
           shown by default.
         </p>
@@ -1175,7 +1175,7 @@ function BreakdownSection({
             <button
               onClick={onReview}
               disabled={isReviewing}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium disabled:opacity-50"
+              className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-700 font-medium disabled:opacity-50"
               title="Ask the AI to check every gloss, not just fill missing ones"
             >
               <Check size={11} /> {isReviewing ? 'Reviewing…' : 'Review with AI'}
@@ -1197,7 +1197,7 @@ function BreakdownSection({
                   <span className="thai font-medium">{thai}</span>
                   {' → '}
                   <span className="italic">{part?.gloss ?? '?'}</span>
-                  <span className="text-amber-500">?</span>
+                  <span className="text-amber-700">?</span>
                 </p>
               )
             })}
@@ -1226,7 +1226,7 @@ function BreakdownSection({
       {reviewSuggestions && (
         <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
           <div className="flex items-center gap-1.5 mb-1.5">
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+            <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
               AI review
             </p>
             {reviewSuggestions.flagged && (
@@ -1244,11 +1244,11 @@ function BreakdownSection({
                     <span className="thai font-medium">{c.thai}</span>: "{c.current_gloss}" →{' '}
                     <span className="font-medium text-brand-700">"{c.suggested_gloss}"</span>
                   </p>
-                  {c.reason && <p className="text-gray-400 italic mt-0.5">{c.reason}</p>}
+                  {c.reason && <p className="text-gray-600 italic mt-0.5">{c.reason}</p>}
                   <button
                     onClick={() => onApplyReviewCorrection(c.thai, c.suggested_gloss)}
                     disabled={isApplyingReview}
-                    className="mt-1 text-brand-600 hover:text-brand-800 font-medium disabled:opacity-50"
+                    className="mt-1 text-brand-700 hover:text-brand-800 font-medium disabled:opacity-50"
                   >
                     Apply this fix
                   </button>
@@ -1266,7 +1266,7 @@ function BreakdownSection({
                     <span className="thai font-medium">{thai}</span>
                     {' → '}
                     <span className="italic">{part?.gloss ?? '?'}</span>{' '}
-                    <span className="text-gray-400">(gap filled)</span>
+                    <span className="text-gray-600">(gap filled)</span>
                   </p>
                 )
               })}
@@ -1276,14 +1276,14 @@ function BreakdownSection({
           <div className="flex gap-2">
             <button
               onClick={onDismissReview}
-              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Dismiss
             </button>
             <button
               onClick={onApplyAllReviewSuggestions}
               disabled={isApplyingReview}
-              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-brand-500 text-brand-950 hover:bg-brand-400 transition-colors disabled:opacity-50"
             >
               Apply all
             </button>
@@ -1302,7 +1302,7 @@ function BreakdownSection({
         />
       )}
       {correctionOpen && !candidates && (
-        <p className="text-xs text-gray-400 mt-2">Loading candidates…</p>
+        <p className="text-xs text-gray-600 mt-2">Loading candidates…</p>
       )}
     </section>
   )
@@ -1366,7 +1366,7 @@ function CompoundCorrectionPanel({
       </button>
 
       <div>
-        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
           Different split
         </p>
         <div className="space-y-1.5">
@@ -1382,7 +1382,7 @@ function CompoundCorrectionPanel({
                 }}
               />
               <span className="thai">{seg.parts.join(' + ')}</span>
-              {seg.is_current && <span className="text-[10px] text-gray-400">(current)</span>}
+              {seg.is_current && <span className="text-[10px] text-gray-600">(current)</span>}
             </label>
           ))}
           <label className="flex items-center gap-2 text-xs cursor-pointer">
@@ -1405,7 +1405,7 @@ function CompoundCorrectionPanel({
           <div className="flex gap-2 mt-2">
             <button
               onClick={onClose}
-              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -1421,7 +1421,7 @@ function CompoundCorrectionPanel({
       ) : (
         <>
           <div>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
               Meaning per part
             </p>
             <div className="space-y-2">
@@ -1450,7 +1450,7 @@ function CompoundCorrectionPanel({
                       ))}
                       <button
                         onClick={() => setFreeTextOpen((s) => ({ ...s, [thai]: !s[thai] }))}
-                        className="text-[11px] px-2 py-1 rounded-full border border-dashed border-gray-300 text-gray-400 hover:text-gray-600"
+                        className="text-[11px] px-2 py-1 rounded-full border border-dashed border-gray-500 text-gray-600 hover:text-gray-600"
                       >
                         other…
                       </button>
@@ -1474,7 +1474,7 @@ function CompoundCorrectionPanel({
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100"
+              className="flex-1 text-xs px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -1501,11 +1501,11 @@ function SimilarCardsSection({
 }) {
   return (
     <section>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+      <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
         Similar Cards
       </h3>
       {cards.length === 0 ? (
-        <p className="text-xs text-gray-400">No similar cards yet.</p>
+        <p className="text-xs text-gray-600">No similar cards yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {cards.map((c) => (
@@ -1517,7 +1517,7 @@ function SimilarCardsSection({
                 <span className="thai text-sm font-medium text-gray-800 group-hover:text-brand-700 truncate flex-1">
                   {c.thai}
                 </span>
-                <span className="text-xs text-gray-400 truncate hidden sm:block">{c.english}</span>
+                <span className="text-xs text-gray-600 truncate hidden sm:block">{c.english}</span>
                 <span
                   className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded"
                   style={{
@@ -1562,7 +1562,7 @@ function LinksSection({ links }: { links: { outgoing: { link_id: number; link_ty
     <>
       {other.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
             Links
           </h3>
           <ul className="space-y-1.5">
@@ -1571,16 +1571,16 @@ function LinksSection({ links }: { links: { outgoing: { link_id: number; link_ty
                 key={`${l.direction}-${l.link_id}`}
                 className="flex items-center gap-2 text-xs text-gray-600"
               >
-                <span className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-medium">
                   {l.link_type}
                 </span>
                 {l.direction === 'incoming' && (
-                  <ArrowRight size={12} className="text-gray-300 rotate-180 shrink-0" />
+                  <ArrowRight size={12} className="text-gray-600 rotate-180 shrink-0" />
                 )}
                 <span className="thai font-medium">{l.card.thai}</span>
-                <span className="text-gray-400">— {l.card.english}</span>
+                <span className="text-gray-600">— {l.card.english}</span>
                 {l.direction === 'outgoing' && (
-                  <ArrowRight size={12} className="text-gray-300 shrink-0" />
+                  <ArrowRight size={12} className="text-gray-600 shrink-0" />
                 )}
               </li>
             ))}
@@ -1590,7 +1590,7 @@ function LinksSection({ links }: { links: { outgoing: { link_id: number; link_ty
 
       {confusable.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">
+          <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">
             Easily confused with
           </h3>
           <ul className="space-y-1.5">
@@ -1600,9 +1600,9 @@ function LinksSection({ links }: { links: { outgoing: { link_id: number; link_ty
                 className="flex items-center gap-2 text-xs text-gray-600"
               >
                 <span className="thai font-medium">{l.card.thai}</span>
-                <span className="text-gray-400">— {l.card.english}</span>
+                <span className="text-gray-600">— {l.card.english}</span>
                 {friendlyConfusableReason(l.note) && (
-                  <span className="text-[10px] text-gray-400 italic ml-auto shrink-0">
+                  <span className="text-[10px] text-gray-600 italic ml-auto shrink-0">
                     {friendlyConfusableReason(l.note)}
                   </span>
                 )}

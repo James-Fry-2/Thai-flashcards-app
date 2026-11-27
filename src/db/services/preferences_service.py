@@ -17,6 +17,7 @@ VALID_FALLBACK = {"paiboon", "rtgs", "ipa", "none"}
 NEW_LIMIT_RANGE = (0, 200)
 REVIEW_LIMIT_RANGE = (10, 2000)
 VALID_TTS_SPEED = {"normal", "slow"}
+VALID_CARD_FONT = {"learner", "classic", "realworld", "handwriting"}
 
 
 async def get_preferences(db: AsyncSession) -> UserPreferences:
@@ -41,6 +42,7 @@ async def update_preferences(
     daily_review_limit: Optional[int] = None,
     tts_autoplay_on_reveal: Optional[bool] = None,
     tts_default_speed: Optional[str] = None,
+    card_font: Optional[str] = None,
 ) -> UserPreferences:
     """Update preferences and, if romanization settings changed, recompute effective columns."""
     prefs = await get_preferences(db)
@@ -83,6 +85,11 @@ async def update_preferences(
         if tts_default_speed not in VALID_TTS_SPEED:
             raise ValueError(f"tts_default_speed must be one of {sorted(VALID_TTS_SPEED)}")
         prefs.tts_default_speed = tts_default_speed
+
+    if card_font is not None:
+        if card_font not in VALID_CARD_FONT:
+            raise ValueError(f"card_font must be one of {sorted(VALID_CARD_FONT)}")
+        prefs.card_font = card_font
 
     prefs.updated_at = datetime.now(timezone.utc)
     await db.flush()

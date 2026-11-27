@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baimai: less bank, more learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;600&family=Mali:wght@500;700&family=Mitr:wght@400;600&family=Chonburi&family=Noto+Sans+Thai+Looped:wght@600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Anuphan,sans-serif;background:#f3f1ec;color:#1c201d}
+main{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}
+.lede{max-width:80ch;color:#454b47;margin:0 0 22px;line-height:1.55}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:start}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.label{font-weight:600;margin:0 0 4px}
+.sub{font-size:13px;color:#545c56;margin:0 0 10px;min-height:54px}
+.phone{border-radius:28px;padding:18px 16px 20px;min-height:560px;position:relative;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.logo{display:flex;align-items:center;gap:8px;font-size:20px}
+.greet{font-size:14px;margin:0 0 12px}
+.card{border-radius:20px;padding:26px 14px 20px;text-align:center;position:relative}
+.thai{font-family:'Noto Sans Thai Looped';font-size:46px;line-height:1.3}
+.rom{font-size:14px;margin-top:2px}
+.btns{display:flex;gap:8px;justify-content:center;margin-top:16px}
+.btn{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;padding:10px 14px}
+.decks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.deck{font-size:12px;font-weight:600;padding:6px 10px;border-radius:10px}
+.notes{font-size:12.5px;color:#454b47;margin-top:10px;line-height:1.5}
+.notes b{color:#1c201d}
+.why{background:#fff;border-radius:14px;padding:16px 20px;margin:0 0 22px;font-size:14px;line-height:1.55}
+.why li{margin:2px 0}
+/* A0 current */
+.a0{background:#f5f7f6;border:1px solid #d6dad7}
+.a0 .card{background:#fff;border:1px solid #d6dad7}
+/* A schoolbook */
+.a1{background:#fbf7ef;background-image:repeating-linear-gradient(#fbf7ef 0 27px,#e7e0d0 27px 28px)}
+.a1 .card{background:#fffdf8;border:2px solid #1c201d;box-shadow:4px 5px 0 #1c201d;transform:rotate(-1deg)}
+.a1 h3,.a1 .logo,.a1 .greet{font-family:Mali,cursive}
+/* B garden */
+.a2{background:#fffaf2}
+.a2 .card{background:#fff;border-radius:24px;box-shadow:0 2px 0 #e8e1d3,0 0 0 2px #efe8da}
+.a2 .logo,.a2 .greet{font-family:Mitr,sans-serif}
+.a2 .btn{box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+/* C market sign */
+.a3{background:#fff4dc}
+.a3 .card{background:#fffdf6;border:3px solid #a21f1b;border-radius:16px}
+.a3 .logo{font-family:Chonburi,serif}
+.a3 .greet{font-family:Mitr,sans-serif}
+.tag{position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Bai the leaf: mascot. Colours via CSS vars -->
+  <symbol id="bai" viewBox="0 0 100 100">
+    <path fill="var(--leaf)" d="M50 94 C18 78 14 40 50 6 C86 40 82 78 50 94 Z"/>
+    <path fill="none" stroke="var(--vein)" stroke-width="3.5" stroke-linecap="round" d="M50 88 V30"/>
+    <circle cx="39" cy="50" r="5" fill="var(--ink)"/><circle cx="61" cy="50" r="5" fill="var(--ink)"/>
+    <circle cx="41" cy="48" r="1.6" fill="#fff"/><circle cx="63" cy="48" r="1.6" fill="#fff"/>
+    <path fill="none" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round" d="M42 63 Q50 70 58 63"/>
+    <circle cx="31" cy="60" r="4" fill="var(--blush)" opacity=".7"/><circle cx="69" cy="60" r="4" fill="var(--blush)" opacity=".7"/>
+  </symbol>
+  <!-- old mark for reference -->
+  <symbol id="bo" viewBox="0 0 100 100">
+    <circle cx="33" cy="30" r="8" fill="none" stroke="var(--c1)" stroke-width="8"/>
+    <path fill="none" stroke="var(--c1)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" d="M25 30 V70 Q25 86 41 86 H59 Q75 86 75 70 V34"/>
+    <path fill="var(--acc)" d="M75 36 C64 30 64 12 86 6 C92 24 86 36 75 36 Z"/>
+  </symbol>
+  <!-- hand-drawn bo with doodle leaf (schoolbook) -->
+  <symbol id="bo2" viewBox="0 0 100 100">
+    <circle cx="33" cy="31" r="9" fill="var(--paper)" stroke="var(--ink)" stroke-width="7"/>
+    <path fill="none" stroke="var(--ink)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="M24 32 C23 50 25 64 26 72 C28 86 40 86 50 86 C62 86 73 86 74 70 C75 58 74 46 75 36"/>
+    <path fill="var(--leaf)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round" d="M75 38 C62 32 63 12 88 5 C94 25 88 38 75 38 Z"/>
+    <path fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" d="M77 34 L85 12"/>
+  </symbol>
+</svg>
+<main>
+<h1>Why it looks like a bank, and three ways out</h1>
+<div class="why">
+<b>What makes round 1 read as "bank":</b>
+<ul>
+<li><b>Dark, muted green with gold.</b> Thai banks are colour-coded, and dark green is a bank colour there (Kasikorn). Darker, less saturated colour reads as "competent and serious" (Labrecque &amp; Milne 2012). That's the right feeling for money, the wrong one for learning.</li>
+<li><b>Grey-green canvas and lots of white.</b> It's corporate restraint, with no warmth or texture.</li>
+<li><b>Flat geometric monoline marks in a rounded square.</b> That's the standard fintech app-icon formula.</li>
+<li><b>White text on dark fills.</b> Bright fills with dark text feel more playful.</li>
+<li><b>No character.</b> Learning brands nearly always have a person, a creature or a handmade quality.</li>
+</ul>
+<b>Kept in every direction:</b> the name, the leaf, the looped card font, AA contrast, ✓ / ✕ on feedback. These only change the <i>mood</i> tokens: canvas, brightness, display font, shapes and a mascot.
+</div>
+
+<div class="grid">
+
+<div>
+<p class="label">Round 1 (for reference)</p>
+<p class="sub">Calm and competent, but it could pass for a banking app.</p>
+<div class="phone a0" style="--c1:#1b6a3e;--acc:#b37b00">
+  <div class="bar"><div class="logo" style="color:#1b6a3e;font-weight:600"><svg width="28" height="28"><use href="#bo"/></svg>baimai</div><span class="deck" style="background:#e8a317;color:#2c1b00">7 days</span></div>
+  <p class="greet" style="color:#545c56">20 cards due today</p>
+  <div class="card"><div class="thai">ใบไม้</div><div class="rom" style="color:#545c56">bai mai · leaf</div>
+    <div class="btns"><button class="btn" style="background:#fff;color:#a21f1b;box-shadow:inset 0 0 0 1px #828a84">✕ Again</button><button class="btn" style="background:#2e7d4f;color:#fff">✓ Good</button></div></div>
+  <div class="decks"><span class="deck" style="background:#ebeeeb;color:#3f4641">Food</span><span class="deck" style="background:#ebeeeb;color:#3f4641">Travel</span><span class="deck" style="background:#ebeeeb;color:#3f4641">Chapter 3</span></div>
+</div>
+</div>
+
+<div>
+<p class="label">A · Schoolbook <span style="font-size:12px;font-weight:600;background:#dcf4e3;color:#04522c;padding:2px 8px;border-radius:99px;margin-left:4px">Recommended</span></p>
+<p class="sub">A Thai exercise book: ruled paper, a hand-drawn บ, ink outlines and red-pen ticks. Mali handwriting for headings.</p>
+<div class="phone a1" style="--ink:#1c201d;--leaf:#3da35d;--paper:#fbf7ef">
+  <div class="bar"><div class="logo" style="font-weight:700"><svg width="34" height="34"><use href="#bo2"/></svg>baimai</div><span class="deck" style="background:#f2b33d;color:#2c1b00;border:2px solid #1c201d">7 days ★</span></div>
+  <p class="greet" style="font-size:17px">Morning! 20 leaves to water today</p>
+  <div class="card"><div class="thai">ใบไม้</div><div class="rom" style="color:#454b47">bai mai · leaf</div>
+    <div class="btns"><button class="btn" style="background:#fffdf8;color:#a21f1b;border:2px solid #1c201d">✕ Again</button><button class="btn" style="background:#3da35d;color:#002712;border:2px solid #1c201d">✓ Good</button></div></div>
+  <div style="display:flex;align-items:flex-end;gap:10px;margin-top:14px">
+    <svg width="64" height="64" style="--leaf:#3da35d;--vein:#002712;--ink:#1c201d;--blush:#e85d75"><use href="#bai"/></svg>
+    <div style="font-family:Mali;font-size:14px;background:#fff;border:2px solid #1c201d;border-radius:14px 14px 14px 2px;padding:8px 10px">บ ใบไม้! You know this one.</div>
+  </div>
+</div>
+<p class="notes"><b>Signals learning:</b> paper, handwriting and a teacher's red pen, things everyone associates with school. <b>Risk:</b> it can look scrappy if overdone. Keep the texture to the canvas and headings, and keep card faces clean.</p>
+</div>
+
+<div>
+<p class="label">B · Garden</p>
+<p class="sub">Bright and colourful. Each deck gets its own flower colour, Bai the leaf is the mascot, buttons are chunky, headings are rounded Mitr.</p>
+<div class="phone a2" style="--leaf:#3da35d;--vein:#002712;--ink:#1c201d;--blush:#e85d75">
+  <div class="bar"><div class="logo" style="font-weight:600;color:#04522c"><svg width="32" height="32"><use href="#bai"/></svg>baimai</div><span class="deck" style="background:#f2b33d;color:#2c1b00">🔥 7</span></div>
+  <p class="greet" style="font-size:17px;color:#1c201d">20 leaves ready to grow</p>
+  <div class="card"><div class="thai">ใบไม้</div><div class="rom" style="color:#454b47">bai mai · leaf</div>
+    <div class="btns"><button class="btn" style="background:#ffe3e8;color:#8f1d33">✕ Again</button><button class="btn" style="background:#3da35d;color:#002712">✓ Good</button></div></div>
+  <div class="decks"><span class="deck" style="background:#ffe3e8;color:#8f1d33">🌸 Food</span><span class="deck" style="background:#e3ecff;color:#1c3a8a">💧 Travel</span><span class="deck" style="background:#fff0c9;color:#5b3d00">🌼 Chapter 3</span></div>
+</div>
+<p class="notes"><b>Signals learning:</b> bright colours, a friendly character and game-like buttons. <b>Risk:</b> chunky buttons, a bright green and a mascot sit close to Duolingo. The green would have to move away from their lime, and Bai must not look like their owl's world.</p>
+</div>
+
+<div>
+<p class="label">C · Market sign</p>
+<p class="sub">Hand-painted Thai shop and street-food signs: Chonburi display type, red outlines on cream, marigold highlights.</p>
+<div class="phone a3">
+  <div class="bar"><div class="logo" style="color:#a21f1b">baimai</div><span class="deck" style="background:#f2b33d;color:#2c1b00">7 วัน</span></div>
+  <p class="greet" style="font-size:16px">วันนี้ · 20 cards today</p>
+  <div class="card"><span class="tag" style="background:#a21f1b;color:#fff">คำใหม่ · NEW</span><div class="thai">ใบไม้</div><div class="rom" style="color:#454b47">bai mai · leaf</div>
+    <div class="btns"><button class="btn" style="background:#fffdf6;color:#a21f1b;border:2px solid #a21f1b">✕ Again</button><button class="btn" style="background:#1b6a3e;color:#fff">✓ Good</button></div></div>
+  <div class="decks"><span class="deck" style="background:#a21f1b;color:#fff">อาหาร Food</span><span class="deck" style="background:#1b6a3e;color:#fff">เดินทาง Travel</span></div>
+</div>
+<p class="notes"><b>Signals learning:</b> it's about the Thai you'll actually read on the street. <b>Risk:</b> the closest to "Thai-themed" tourist style (principle 1). Red-dominant also fights the red used for "wrong".</p>
+</div>
+
+</div>
+</main>
+</body>
+</html>

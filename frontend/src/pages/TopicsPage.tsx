@@ -70,7 +70,7 @@ function ModeButton({
     <button
       onClick={onClick}
       className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-        active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+        active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-700'
       }`}
     >
       {children}
@@ -90,7 +90,7 @@ function BrowseView({ selectedTopicId }: { selectedTopicId: number | null }) {
         {selectedTopicId ? (
           <TopicDetailPanel topicId={selectedTopicId} />
         ) : (
-          <div className="card text-center py-16 text-gray-400 text-sm">
+          <div className="card text-center py-16 text-gray-600 text-sm">
             Select a topic from the tree to browse its cards.
           </div>
         )}
@@ -106,11 +106,11 @@ function TopicTree({ selectedId }: { selectedId: number | null }) {
 
   return (
     <div className="card p-2 space-y-0.5">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 py-1.5">
+      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide px-2 py-1.5">
         Topic tree
       </p>
       {tree.length === 0 ? (
-        <p className="text-sm text-gray-400 px-2 py-3">No topics yet.</p>
+        <p className="text-sm text-gray-600 px-2 py-3">No topics yet.</p>
       ) : (
         tree.map((node) => (
           <TopicTreeNode key={node.id} node={node} selectedId={selectedId} depth={0} />
@@ -145,7 +145,7 @@ function TopicTreeNode({
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
         <button
-          className={`shrink-0 w-4 h-4 flex items-center justify-center text-gray-400 ${
+          className={`shrink-0 w-4 h-4 flex items-center justify-center text-gray-600 ${
             !hasChildren ? 'invisible' : ''
           }`}
           onClick={(e) => {
@@ -161,7 +161,7 @@ function TopicTreeNode({
         >
           {node.name}
         </button>
-        <span className="shrink-0 text-xs text-gray-400">{node.card_count}</span>
+        <span className="shrink-0 text-xs text-gray-600">{node.card_count}</span>
       </div>
       {expanded && hasChildren && (
         <div>
@@ -217,7 +217,7 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
           <div>
             <h2 className="text-xl font-bold">{summary.name}</h2>
             {summary.description && (
-              <p className="text-gray-500 text-sm mt-1">{summary.description}</p>
+              <p className="text-gray-600 text-sm mt-1">{summary.description}</p>
             )}
           </div>
 
@@ -225,15 +225,15 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span className="text-gray-600">{summary.card_count} cards</span>
             {summary.due_count > 0 && (
-              <span className="font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+              <span className="font-medium text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
                 {summary.due_count} due
               </span>
             )}
-            <span className="text-gray-500">{summary.new_count} new</span>
+            <span className="text-gray-600">{summary.new_count} new</span>
             {Object.entries(summary.card_type_breakdown).map(([type, count]) => (
               <span
                 key={type}
-                className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full"
               >
                 {type} {count}
               </span>
@@ -249,7 +249,7 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
                   to={`/decks/${d.deck_id}`}
                   className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded-lg transition-colors"
                 >
-                  {d.deck_name} <span className="text-gray-400">({d.card_count})</span>
+                  {d.deck_name} <span className="text-gray-600">({d.card_count})</span>
                 </Link>
               ))}
             </div>
@@ -276,12 +276,12 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
       {/* Cards table */}
       <div className="space-y-2">
         {total > 0 && (
-          <p className="text-sm text-gray-500">{total} cards</p>
+          <p className="text-sm text-gray-600">{total} cards</p>
         )}
         {cardsLoading && !cardsPage ? (
-          <p className="text-gray-400 text-sm">Loading cards…</p>
+          <p className="text-gray-600 text-sm">Loading cards…</p>
         ) : cards.length === 0 ? (
-          <div className="card text-center py-8 text-gray-400 text-sm">
+          <div className="card text-center py-8 text-gray-600 text-sm">
             No cards in this topic yet.
           </div>
         ) : (
@@ -306,13 +306,13 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
                       <td className="px-4 py-3 text-gray-700">{card.english}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
                             {card.card_type}
                           </span>
                           {card.tags?.map((t) => (
                             <span
                               key={t.id}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                              className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full"
                             >
                               {t.name}
                             </span>
@@ -340,8 +340,8 @@ function TopicDetailPanel({ topicId }: { topicId: number }) {
                       key={i}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                         i === page
-                          ? 'bg-brand-600 text-white'
-                          : 'text-gray-500 hover:bg-gray-100'
+                          ? 'bg-brand-500 text-brand-950'
+                          : 'text-gray-600 hover:bg-gray-100'
                       }`}
                       onClick={() => setPage(i)}
                     >
@@ -405,7 +405,7 @@ function TabButton({
       className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
         active
           ? 'border-brand-600 text-brand-700'
-          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          : 'border-transparent text-gray-600 hover:text-gray-700 hover:border-gray-500'
       }`}
     >
       {children}
@@ -499,15 +499,15 @@ function TopicsTab() {
       <section>
         <h2 className="text-sm font-semibold text-gray-700 mb-3">All topics</h2>
         {isLoading ? (
-          <p className="text-gray-400 text-sm">Loading…</p>
+          <p className="text-gray-600 text-sm">Loading…</p>
         ) : topics.length === 0 ? (
-          <div className="card text-center py-12 text-gray-400 text-sm">
+          <div className="card text-center py-12 text-gray-600 text-sm">
             No topics yet. Topics are created automatically during card tagging.
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-100">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-right">Cards</th>
@@ -601,13 +601,13 @@ function TopicRow({
           <>
             <span className="font-medium">{topic.name}</span>
             {topic.description && (
-              <p className="text-xs text-gray-400 mt-0.5">{topic.description}</p>
+              <p className="text-xs text-gray-600 mt-0.5">{topic.description}</p>
             )}
           </>
         )}
       </td>
       <td className="px-4 py-3 text-right text-gray-600">{topic.card_count}</td>
-      <td className="px-4 py-3 text-right text-gray-400">
+      <td className="px-4 py-3 text-right text-gray-600">
         {topic.avg_fsrs_difficulty != null
           ? topic.avg_fsrs_difficulty.toFixed(2)
           : '—'}
@@ -717,15 +717,15 @@ function TagsTab() {
       <section>
         <h2 className="text-sm font-semibold text-gray-700 mb-3">All tags</h2>
         {isLoading ? (
-          <p className="text-gray-400 text-sm">Loading…</p>
+          <p className="text-gray-600 text-sm">Loading…</p>
         ) : tags.length === 0 ? (
-          <div className="card text-center py-12 text-gray-400 text-sm">
+          <div className="card text-center py-12 text-gray-600 text-sm">
             No tags yet. Tags are created automatically during card tagging.
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-100">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-right">Cards</th>
@@ -852,11 +852,11 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      {icon && <AlertTriangle size={16} className="text-amber-500" />}
+      {icon && <AlertTriangle size={16} className="text-amber-700" />}
       <h2 className="text-sm font-semibold text-gray-700">
         {children}
         {count !== undefined && (
-          <span className="ml-1.5 text-gray-400 font-normal">({count})</span>
+          <span className="ml-1.5 text-gray-600 font-normal">({count})</span>
         )}
       </h2>
     </div>
@@ -882,17 +882,17 @@ function DuplicateRow({
     <div className="flex items-center gap-4 px-4 py-3">
       <div className="flex-1 flex items-center gap-2 min-w-0 text-sm">
         <span className="font-medium truncate">{nameA}</span>
-        <span className="text-gray-400 text-xs shrink-0">{countA} cards</span>
-        <span className="text-gray-300 shrink-0">·</span>
+        <span className="text-gray-600 text-xs shrink-0">{countA} cards</span>
+        <span className="text-gray-600 shrink-0">·</span>
         <span className="font-medium truncate">{nameB}</span>
-        <span className="text-gray-400 text-xs shrink-0">{countB} cards</span>
+        <span className="text-gray-600 text-xs shrink-0">{countB} cards</span>
       </div>
-      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">
+      <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">
         {reason}
       </span>
       <button
         onClick={onMerge}
-        className="shrink-0 text-xs text-brand-600 border border-brand-200 hover:bg-brand-50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+        className="shrink-0 text-xs text-brand-700 border border-brand-200 hover:bg-brand-50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
       >
         <GitMerge size={12} /> Merge…
       </button>
@@ -921,12 +921,12 @@ function InlineRename({
           if (e.key === 'Enter') onSubmit()
           if (e.key === 'Escape') onCancel()
         }}
-        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
+        className="border border-gray-500 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
       />
-      <button onClick={onSubmit} className="text-green-600 hover:text-green-700">
+      <button onClick={onSubmit} className="text-green-700 hover:text-green-700">
         <Check size={14} />
       </button>
-      <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+      <button onClick={onCancel} className="text-gray-600 hover:text-gray-600">
         <X size={14} />
       </button>
     </div>
@@ -952,14 +952,14 @@ function RowActions({
     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <button
         onClick={onRename}
-        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+        className="p-1.5 text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
         title="Rename"
       >
         <Pencil size={13} />
       </button>
       <button
         onClick={onMerge}
-        className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg"
+        className="p-1.5 text-gray-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg"
         title="Merge into…"
       >
         <GitMerge size={13} />
@@ -970,7 +970,7 @@ function RowActions({
         className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
           confirming
             ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
-            : 'border-transparent text-gray-400 hover:border-red-300 hover:text-red-500'
+            : 'border-transparent text-gray-600 hover:border-red-300 hover:text-red-600'
         }`}
         title={confirming ? 'Click again to confirm' : 'Delete'}
       >
@@ -1032,7 +1032,7 @@ function MergeModal({
             <h2 className="font-semibold text-gray-900 text-sm">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              className="p-1.5 text-gray-600 hover:text-gray-600 rounded-lg hover:bg-gray-100"
             >
               <X size={16} />
             </button>
@@ -1054,7 +1054,7 @@ function MergeModal({
                   }}
                   onFocus={() => setDropdownOpen(true)}
                   placeholder={searchPlaceholder}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full border border-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 {target && (
                   <button
@@ -1062,7 +1062,7 @@ function MergeModal({
                       setTarget(null)
                       setQuery('')
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
                   >
                     <X size={14} />
                   </button>
@@ -1079,7 +1079,7 @@ function MergeModal({
                           }}
                         >
                           <span>{t.name}</span>
-                          <span className="text-xs text-gray-400">{t.card_count} cards</span>
+                          <span className="text-xs text-gray-600">{t.card_count} cards</span>
                         </button>
                       </li>
                     ))}
@@ -1095,11 +1095,11 @@ function MergeModal({
                   <span className="font-medium">{sourceCardCount} cards</span> into "
                   {target.name}". Cards already assigned to the target will be skipped.
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-600">
                   Description and parent will only be copied to the target if the target
                   doesn't already have them.
                 </p>
-                <p className="text-xs text-red-500 font-medium">
+                <p className="text-xs text-red-600 font-medium">
                   "{sourceName}" will be deleted.
                 </p>
               </div>

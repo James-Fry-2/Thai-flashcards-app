@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baimai: Garden direction, refined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Mitr:wght@400;500;600&family=Noto+Sans+Thai+Looped:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+ --leaf-50:#e7feeb;--leaf-100:#d7f7dd;--leaf-200:#b7e7c1;--leaf-300:#91d4a0;--leaf-400:#61b979;--leaf-500:#3da35d;--leaf-600:#1d8544;--leaf-700:#006c31;--leaf-800:#005224;--leaf-900:#003c18;--leaf-950:#00270d;
+ --mari-100:#ffeac9;--mari-300:#f2b33d;--mari-700:#765200;--mari-950:#2c1c00;
+ --kram-100:#e4edff;--kram-700:#2652b0;--kram-800:#153c91;
+ --orch-100:#f4e7ff;--orch-400:#b98adb;--orch-800:#54326b;
+ --n-50:#f8f7f5;--n-100:#eeecea;--n-200:#dbd9d5;--n-300:#c3c0bc;--n-400:#a6a39d;--n-500:#8b8780;--n-600:#75716a;--n-700:#5d5952;--n-800:#46433e;--n-900:#33302b;--n-950:#211f1b;
+ --paper:#fffaf2;--rule:#f1e9da;
+ --red:#a21f1b;--red-100:#ffe6e3;--red-800:#820608;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Anuphan,sans-serif;background:#ece8df;color:var(--n-900)}
+main{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+h1{font-family:Mitr;font-weight:500;font-size:28px;margin:0 0 6px;color:var(--leaf-800)}
+h2{font-family:Mitr;font-weight:500;font-size:20px;margin:40px 0 8px}
+.lede{max-width:80ch;color:var(--n-700);margin:0 0 20px;line-height:1.55}
+.screens{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:1000px){.screens{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.screens{grid-template-columns:1fr}}
+.cap{font-size:13px;color:var(--n-700);margin:0 0 8px;font-weight:500}
+.phone{border-radius:30px;padding:18px 16px 22px;min-height:600px;position:relative}
+.paper{background:var(--paper);background-image:repeating-linear-gradient(var(--paper) 0 31px,var(--rule) 31px 32px)}
+.dark{background:var(--n-950);color:var(--n-100)}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.logo{display:flex;align-items:center;gap:8px;font-family:Mitr;font-weight:600;font-size:21px;color:var(--leaf-800)}
+.dark .logo{color:var(--leaf-300)}
+.pill{font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px}
+.h{font-family:Mitr;font-weight:500;font-size:22px;margin:0 0 2px}
+.s{font-size:14px;color:var(--n-700);margin:0 0 14px}
+.dark .s{color:var(--n-400)}
+.big{display:block;width:100%;font:inherit;font-family:Mitr;font-weight:500;font-size:17px;border:0;border-radius:16px;padding:14px;background:var(--leaf-500);color:var(--leaf-950);box-shadow:inset 0 -4px 0 var(--leaf-600)}
+.decks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.deck{border-radius:18px;padding:12px;min-height:92px;display:flex;flex-direction:column;justify-content:space-between}
+.deck b{font-family:Mitr;font-weight:500;font-size:15px}
+.deck small{font-size:12px}
+.meter{height:6px;border-radius:9px;background:rgba(0,0,0,.08);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:9px}
+.card{background:#fff;border-radius:26px;padding:30px 14px 22px;text-align:center;box-shadow:0 0 0 2px var(--n-100),0 3px 0 2px var(--n-200);margin-top:6px}
+.dark .card{background:var(--n-900);box-shadow:0 0 0 2px var(--n-800),0 3px 0 2px #000}
+.thai{font-family:'Noto Sans Thai Looped';font-weight:600;font-size:52px;line-height:1.3}
+.rom{font-size:15px;color:var(--n-700)}
+.dark .rom{color:var(--n-400)}
+.grades{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:18px}
+.g{font:inherit;font-family:Mitr;font-size:14px;font-weight:500;border:0;border-radius:14px;padding:11px 4px;background:#fff;color:var(--n-900);box-shadow:inset 0 0 0 2px var(--n-500),inset 0 -4px 0 var(--n-200)}
+.dark .g{background:var(--n-900);color:var(--n-100);box-shadow:inset 0 0 0 2px var(--n-500),inset 0 -4px 0 #000}
+.g.again{color:var(--red)} .dark .g.again{color:#ea8073}
+.g.good{background:var(--leaf-500);color:var(--leaf-950);box-shadow:inset 0 -4px 0 var(--leaf-600)}
+.dark .g.good{background:var(--leaf-400);color:var(--leaf-950);box-shadow:inset 0 -4px 0 var(--leaf-600)}
+.prog{display:flex;gap:4px;margin-bottom:12px}.prog i{flex:1;height:8px;border-radius:9px;background:var(--n-200)}.prog i.on{background:var(--leaf-500)}
+.dark .prog i{background:var(--n-800)} .dark .prog i.on{background:var(--leaf-400)}
+.fb{display:flex;align-items:center;gap:8px;border-radius:14px;padding:10px 12px;font-size:14px;font-weight:500;margin-top:12px}
+.moments{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:900px){.moments{grid-template-columns:1fr 1fr}}
+.moment{background:var(--paper);border-radius:20px;padding:18px;text-align:center}
+.moment p{margin:8px 0 0;font-size:14px}
+.moment .t{font-family:Mitr;font-weight:500;font-size:16px;margin-top:6px}
+.logos{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.logos{grid-template-columns:1fr}}
+.lg{background:#fff;border-radius:20px;padding:18px}
+.lg .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tile{width:76px;height:76px;border-radius:18px;display:grid;place-items:center}
+.lg p{font-size:13px;color:var(--n-700);margin:12px 0 0}
+.lg p b{color:var(--n-900)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="bai" viewBox="0 0 100 100">
+    <path fill="var(--leaf,#3da35d)" d="M50 95 C16 79 13 40 50 5 C87 40 84 79 50 95 Z"/>
+    <path fill="none" stroke="var(--vein,#1d8544)" stroke-width="3.5" stroke-linecap="round" d="M50 89 V74"/>
+    <circle cx="39" cy="50" r="5.5" fill="var(--ink,#211f1b)"/><circle cx="61" cy="50" r="5.5" fill="var(--ink,#211f1b)"/>
+    <circle cx="41" cy="48" r="1.8" fill="#fff"/><circle cx="63" cy="48" r="1.8" fill="#fff"/>
+    <path fill="none" stroke="var(--ink,#211f1b)" stroke-width="3.5" stroke-linecap="round" d="M42 63 Q50 70 58 63"/>
+    <ellipse cx="30" cy="60" rx="4.5" ry="3.2" fill="#f2aabb" opacity=".8"/><ellipse cx="70" cy="60" rx="4.5" ry="3.2" fill="#f2aabb" opacity=".8"/>
+  </symbol>
+  <symbol id="bai-sleep" viewBox="0 0 100 100">
+    <path fill="var(--leaf,#3da35d)" d="M50 95 C16 79 13 40 50 5 C87 40 84 79 50 95 Z"/>
+    <path fill="none" stroke="#211f1b" stroke-width="3.5" stroke-linecap="round" d="M34 51 Q39 55 44 51 M56 51 Q61 55 66 51 M45 65 Q50 67 55 65"/>
+    <ellipse cx="30" cy="60" rx="4.5" ry="3.2" fill="#f2aabb" opacity=".8"/><ellipse cx="70" cy="60" rx="4.5" ry="3.2" fill="#f2aabb" opacity=".8"/>
+  </symbol>
+  <symbol id="bai-think" viewBox="0 0 100 100">
+    <path fill="var(--leaf,#3da35d)" d="M50 95 C16 79 13 40 50 5 C87 40 84 79 50 95 Z"/>
+    <circle cx="41" cy="48" r="5.5" fill="#211f1b"/><circle cx="63" cy="48" r="5.5" fill="#211f1b"/>
+    <circle cx="43" cy="46" r="1.8" fill="#fff"/><circle cx="65" cy="46" r="1.8" fill="#fff"/>
+    <path fill="none" stroke="#211f1b" stroke-width="3.5" stroke-linecap="round" d="M44 65 H58"/>
+  </symbol>
+  <symbol id="bo" viewBox="0 0 100 100">
+    <circle cx="33" cy="31" r="9" fill="none" stroke="var(--c,#fff)" stroke-width="9"/>
+    <path fill="none" stroke="var(--c,#fff)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" d="M24 32 V68 Q24 86 42 86 H58 Q76 86 76 68 V40"/>
+    <path fill="var(--acc,#f2b33d)" d="M76 42 C62 36 62 14 90 6 C96 28 90 42 76 42 Z"/>
+  </symbol>
+  <symbol id="dot" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="currentColor"/></symbol>
+</svg>
+
+<main>
+<h1>Garden, refined</h1>
+<p class="lede">This is direction B with three changes: the schoolbook's ruled paper as a quiet background texture, plain wording with no jokes, and Bai the leaf as a helper character. Fills are now a brighter leaf green with dark text. Deck colours are leaf, marigold, kram indigo and orchid, re-chosen so colour-blind users can still tell them apart and none looks like the "wrong" red.</p>
+
+<div class="screens">
+  <div>
+    <p class="cap">Home, light</p>
+    <div class="phone paper">
+      <div class="bar"><div class="logo"><svg width="30" height="30"><use href="#bai"/></svg>baimai</div>
+        <span class="pill" style="background:var(--mari-300);color:var(--mari-950)">7-day streak</span></div>
+      <p class="h">20 cards due</p>
+      <p class="s">About 8 minutes &middot; 5 new</p>
+      <button class="big">Start review</button>
+      <div class="decks">
+        <div class="deck" style="background:var(--leaf-100);color:var(--leaf-800)"><b>Food</b><div><small>12 due</small><div class="meter"><i style="width:70%;background:var(--leaf-600)"></i></div></div></div>
+        <div class="deck" style="background:var(--mari-100);color:var(--mari-700)"><b>Chapter 3</b><div><small>4 due</small><div class="meter"><i style="width:40%;background:#b17d00"></i></div></div></div>
+        <div class="deck" style="background:var(--kram-100);color:var(--kram-800)"><b>Travel</b><div><small>3 due</small><div class="meter"><i style="width:55%;background:var(--kram-700)"></i></div></div></div>
+        <div class="deck" style="background:var(--orch-100);color:var(--orch-800)"><b>Market signs</b><div><small>1 due</small><div class="meter"><i style="width:20%;background:#855ba2"></i></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="cap">Review, light</p>
+    <div class="phone paper">
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      <div class="card">
+        <div class="thai">ใบไม้</div>
+        <div class="rom">bai mai</div>
+        <div style="font-family:Mitr;font-size:20px;margin-top:10px">leaf</div>
+        <div class="grades"><button class="g again">&#10005; Again</button><button class="g">Hard</button><button class="g good">&#10003; Good</button><button class="g">Easy</button></div>
+      </div>
+      <div class="fb" style="background:var(--leaf-100);color:var(--leaf-800)">&#10003; Correct &middot; next review in 4 days</div>
+      <div class="fb" style="background:var(--red-100);color:var(--red-800)">&#10005; Not quite &middot; you'll see it again soon</div>
+    </div>
+  </div>
+
+  <div>
+    <p class="cap">Review, dark</p>
+    <div class="phone dark">
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      <div class="card">
+        <div class="thai">ใบไม้</div>
+        <div class="rom">bai mai</div>
+        <div style="font-family:Mitr;font-size:20px;margin-top:10px">leaf</div>
+        <div class="grades"><button class="g again">&#10005; Again</button><button class="g">Hard</button><button class="g good">&#10003; Good</button><button class="g">Easy</button></div>
+      </div>
+      <div class="fb" style="background:var(--leaf-900);color:var(--leaf-200)">&#10003; Correct &middot; next review in 4 days</div>
+      <div class="fb" style="background:#610002;color:#ffcbc3">&#10005; Not quite &middot; you'll see it again soon</div>
+    </div>
+  </div>
+</div>
+
+<h2>Where Bai appears</h2>
+<p class="lede">Bai only appears at the edges of a session: empty states, milestones and help. It's never on the card face and never in the middle of a review. The words underneath are plain.</p>
+<div class="moments">
+  <div class="moment"><svg width="72" height="72"><use href="#bai"/></svg><div class="t">All done for today</div><p>20 cards reviewed. Next cards are due tomorrow.</p></div>
+  <div class="moment"><svg width="72" height="72"><use href="#bai-sleep"/></svg><div class="t">No cards due</div><p>Upload a page or photo to make new cards.</p></div>
+  <div class="moment"><svg width="72" height="72"><use href="#bai-think"/></svg><div class="t">3 cards need checking</div><p>The OCR wasn't sure about these. Check them before you learn them.</p></div>
+  <div class="moment"><svg width="72" height="72" style="--leaf:#f2b33d"><use href="#bai"/></svg><div class="t">100 cards learned</div><p>Marigold Bai appears only for milestones.</p></div>
+</div>
+
+<h2>App icon options for this direction</h2>
+<div class="logos">
+  <div class="lg"><div class="row"><div class="tile" style="background:var(--leaf-500)"><svg width="56" height="56" style="--leaf:#fffaf2;--vein:#91d4a0"><use href="#bai"/></svg></div><svg width="40" height="40"><use href="#bai"/></svg><svg width="18" height="18"><use href="#bai"/></svg></div>
+    <p><b>Bai as the icon.</b> The most memorable and friendly option. The face disappears below about 20px, so the favicon becomes a plain leaf.</p></div>
+  <div class="lg"><div class="row"><div class="tile" style="background:var(--leaf-500)"><svg width="54" height="54" style="--c:#00270d;--acc:#fffaf2"><use href="#bo"/></svg></div><svg width="40" height="40" style="--c:#006c31;--acc:#f2b33d"><use href="#bo"/></svg><svg width="18" height="18" style="--c:#006c31;--acc:#f2b33d"><use href="#bo"/></svg></div>
+    <p><b>Chunky บ ใบไม้.</b> The round-1 letter, made heavier and set on bright green. Bai stays as the in-app character.</p></div>
+  <div class="lg"><div class="row"><div class="tile" style="background:var(--paper);box-shadow:inset 0 0 0 2px var(--n-200)"><svg width="54" height="54"><use href="#bai"/></svg></div><span style="font-family:Mitr;font-weight:600;font-size:30px;color:var(--leaf-800)">baimai</span></div>
+    <p><b>Bai on paper.</b> A cream tile instead of green, which stands out from the green-tile icons (banks and Duolingo) on a home screen.</p></div>
+</div>
+</main>
+</body>
+</html>

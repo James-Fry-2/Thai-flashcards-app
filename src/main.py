@@ -18,7 +18,7 @@ from src.tasks.upload_worker import recover_interrupted, run_worker_loop
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    logger.info("Starting dek-kard...")
+    logger.info("Starting Baimai...")
 
     # Ensure data directories exist
     Path(settings.media_dir).mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Dek-Kard",
+        title="Baimai",
         description="Thai language flashcard app",
         version="1.0.0",
         lifespan=lifespan,
