@@ -38,7 +38,8 @@ _locks: dict[str, asyncio.Lock] = {}
 
 __all__ = [
     "TTSError", "TTSNotConfigured", "InvalidTTSText", "TTSResult",
-    "get_audio", "card_audio", "dialogue_voices", "usage_summary",
+    "get_audio", "cached_audio", "card_audio", "ensure_card_audio", "BatchResult",
+    "dialogue_voices", "usage_summary",
 ]
 
 
@@ -89,38 +90,76 @@ def _storage_path(key: str) -> str:
     return f"tts/{key[:2]}/{key}.mp3"
 
 
-async def get_audio(
-    db: AsyncSession, text: str, voice: VoiceKind = "female", speed: Speed = "normal"
-) -> TTSResult:
+def _locate(text: str, voice: VoiceKind, speed: Speed) -> tuple[str, str, str, str, Path]:
+    """(clean text, voice name, rate, cache key, absolute path) for a clip."""
     settings = get_settings()
     text = clean_text(text)
     voice_name, rate = _voice_name(voice), _rate(speed)
     key = cache_key(settings.tts_provider, voice_name, rate, text)
-    rel = _storage_path(key)
-    path = Path(settings.media_dir) / rel
+    return text, voice_name, rate, key, Path(settings.media_dir) / _storage_path(key)
 
+
+def cached_audio(text: Optional[str], voice: VoiceKind = "female", speed: Speed = "normal") -> Optional[Path]:
+    """Path of an already-generated clip, or None. Never calls the provider."""
+    try:
+        *_, path = _locate(text or "", voice, speed)
+    except InvalidTTSText:
+        return None
+    return path if path.is_file() else None
+
+
+async def _synthesize(text: str, voice_name: str, rate: str, key: str, path: Path) -> Optional[str]:
+    """Write the clip to *path* unless it already exists. Returns the
+    provider's name when a billed call was made, None when it was cached.
+    No database access, so callers can run several at once."""
     if path.is_file():
-        return TTSResult(path, rel, True, len(text))
-
+        return None
     # One synthesis per key even when the same phrase is requested twice at once.
     lock = _locks.setdefault(key, asyncio.Lock())
     try:
         async with lock:
             if path.is_file():
-                return TTSResult(path, rel, True, len(text))
-            provider = get_tts_provider(settings)  # raises TTSNotConfigured
+                return None
+            provider = get_tts_provider()  # raises TTSNotConfigured
             audio = await provider.synthesize(text, voice_name, rate)
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(f".{os.getpid()}.tmp")
+            tmp = path.with_suffix(f".{os.getpid()}.{id(lock)}.tmp")
             tmp.write_bytes(audio)
             os.replace(tmp, path)  # atomic: a reader never sees a half-written file
-            db.add(TTSUsage(provider=provider.name, voice=voice_name, rate=rate,
-                            chars=len(text), cache_key=key))
-            await db.flush()
-            return TTSResult(path, rel, False, len(text))
+            return provider.name
     finally:
         if not lock.locked():
             _locks.pop(key, None)
+
+
+async def get_audio(
+    db: AsyncSession, text: str, voice: VoiceKind = "female", speed: Speed = "normal"
+) -> TTSResult:
+    text, voice_name, rate, key, path = _locate(text, voice, speed)
+    provider_name = await _synthesize(text, voice_name, rate, key, path)
+    if provider_name:
+        db.add(TTSUsage(provider=provider_name, voice=voice_name, rate=rate, chars=len(text), cache_key=key))
+        await db.flush()
+    return TTSResult(path, _storage_path(key), provider_name is None, len(text))
+
+
+async def _record_card_media(db: AsyncSession, rows: list[tuple[int, str, str]]) -> None:
+    """Add card_media rows (card_id, storage_path, alt_text) that don't exist yet."""
+    if not rows:
+        return
+    existing = set(
+        (await db.execute(
+            select(CardMedia.card_id, CardMedia.storage_path).where(
+                CardMedia.media_type == "audio",
+                CardMedia.card_id.in_({r[0] for r in rows}),
+            )
+        )).all()
+    )
+    for card_id, storage_path, alt in rows:
+        if (card_id, storage_path) not in existing:
+            existing.add((card_id, storage_path))
+            db.add(CardMedia(card_id=card_id, media_type="audio", storage_path=storage_path, alt_text=alt))
+    await db.flush()
 
 
 async def card_audio(
@@ -130,17 +169,109 @@ async def card_audio(
     if not text:
         raise InvalidTTSText(f"card has no {field} text")
     result = await get_audio(db, text, "female", speed)
-    exists = await db.scalar(
-        select(CardMedia.id).where(
-            CardMedia.card_id == card.id,
-            CardMedia.media_type == "audio",
-            CardMedia.storage_path == result.storage_path,
-        )
-    )
-    if not exists:
-        db.add(CardMedia(card_id=card.id, media_type="audio", storage_path=result.storage_path,
-                         alt_text=f"{field}:{speed}"))
-        await db.flush()
+    await _record_card_media(db, [(card.id, result.storage_path, f"{field}:{speed}")])
+    return result
+
+
+CardField = Literal["thai", "example"]
+
+
+@dataclass
+class BatchResult:
+    paths: dict[tuple[int, str, str], Path]   # (card_id, field, speed) -> clip
+    generated: int = 0    # billed calls made
+    cached: int = 0       # already on disk
+    missing: int = 0      # not on disk and not generated (generate=False)
+    skipped: int = 0      # no speakable Thai (empty, not Thai, too long)
+    failed: int = 0       # provider errors
+    chars: int = 0        # characters sent to the provider
+    to_generate_chars: int = 0  # characters a generate=True run would send
+
+
+async def ensure_card_audio(
+    db: AsyncSession,
+    cards: list[Card],
+    fields: tuple[CardField, ...] = ("thai", "example"),
+    speeds: tuple[Speed, ...] = ("normal",),
+    generate: bool = True,
+    concurrency: int = 4,
+    on_progress=None,
+) -> BatchResult:
+    """Make sure each card's audio exists. With generate=False only reports
+    and collects what is already cached (free; used for estimates and the
+    default Anki export). Provider calls run *concurrency* at a time; all
+    database writes happen afterwards on *db*, one at a time.
+
+    Raises TTSNotConfigured before doing any work if clips are missing,
+    generate=True and no provider is set up."""
+    result = BatchResult(paths={})
+    jobs = []
+    seen_keys: set[str] = set()
+    for card in cards:
+        for field in fields:
+            text = card.thai if field == "thai" else card.example_thai
+            if not text:
+                continue
+            for speed in speeds:
+                try:
+                    clean, voice_name, rate, key, path = _locate(text, "female", speed)
+                except InvalidTTSText:
+                    result.skipped += 1
+                    continue
+                job = (card.id, field, speed, clean, voice_name, rate, key, path)
+                if path.is_file():
+                    result.cached += 1
+                    result.paths[(card.id, field, speed)] = path
+                    jobs.append((job, False))
+                else:
+                    if key not in seen_keys:
+                        result.to_generate_chars += len(clean)
+                    seen_keys.add(key)
+                    jobs.append((job, True))
+
+    pending = [job for job, needs in jobs if needs]
+    if not generate:
+        result.missing = len(pending)
+        return result
+    if pending:
+        get_tts_provider()  # fail fast with TTSNotConfigured
+
+    sem = asyncio.Semaphore(concurrency)
+    done = 0
+
+    async def run(job):
+        nonlocal done
+        card_id, field, speed, clean, voice_name, rate, key, path = job
+        async with sem:
+            try:
+                name = await _synthesize(clean, voice_name, rate, key, path)
+                outcome = (job, name, None)
+            except TTSError as exc:
+                outcome = (job, None, exc)
+        done += 1
+        if on_progress:
+            on_progress(done, len(pending))
+        return outcome
+
+    outcomes = await asyncio.gather(*(run(j) for j in pending))
+    for job, name, exc in outcomes:
+        card_id, field, speed, clean, voice_name, rate, key, path = job
+        if exc is not None:
+            result.failed += 1
+            continue
+        result.paths[(card_id, field, speed)] = path
+        if name:
+            result.generated += 1
+            result.chars += len(clean)
+            db.add(TTSUsage(provider=name, voice=voice_name, rate=rate, chars=len(clean), cache_key=key))
+        else:
+            result.cached += 1  # another card had the same text
+
+    await _record_card_media(db, [
+        (card_id, _storage_path(key), f"{field}:{speed}")
+        for (card_id, field, speed, _c, _v, _r, key, _p), _needs in jobs
+        if (card_id, field, speed) in result.paths
+    ])
     return result
 
 

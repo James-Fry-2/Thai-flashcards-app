@@ -247,3 +247,112 @@ async def test_audio_preferences_round_trip(client):
     body = (await ac.patch("/api/preferences/", json={"tts_autoplay_on_reveal": True, "tts_default_speed": "slow"})).json()
     assert body["tts_autoplay_on_reveal"] is True and body["tts_default_speed"] == "slow"
     assert (await ac.patch("/api/preferences/", json={"tts_default_speed": "fast"})).status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# batch generation (backfill script, Anki export)
+# ---------------------------------------------------------------------------
+
+async def _deck_with_cards(factory):
+    async with factory() as db:
+        deck = Deck(name="Audio deck")
+        db.add(deck)
+        await db.flush()
+        cards = [
+            Card(deck_id=deck.id, thai="ข้าว", english="rice", card_type="vocab",
+                 example_thai="กินข้าว", example_english="eat rice"),
+            Card(deck_id=deck.id, thai="น้ำ", english="water", card_type="vocab",
+                 example_thai="กินข้าว", example_english="eat rice"),          # same example as above
+            Card(deck_id=deck.id, thai="khun pìt", english="you close", card_type="phrase"),  # no Thai
+        ]
+        db.add_all(cards)
+        await db.commit()
+        return deck.id, [c.id for c in cards]
+
+
+@pytest.mark.asyncio
+async def test_ensure_card_audio_estimates_then_generates_each_text_once(client, fake_tts):
+    ac, factory = client
+    deck_id, ids = await _deck_with_cards(factory)
+    async with factory() as db:
+        cards = (await db.scalars(select(Card).where(Card.deck_id == deck_id).order_by(Card.id))).all()
+
+        est = await tts_service.ensure_card_audio(db, cards, generate=False)
+        assert (est.cached, est.missing, est.skipped) == (0, 4, 1)
+        assert est.to_generate_chars == len("ข้าว") + len("น้ำ") + len("กินข้าว")  # shared example counted once
+        assert fake_tts.calls == []
+
+        res = await tts_service.ensure_card_audio(db, cards, generate=True)
+        await db.commit()
+        assert sorted(t for t, _, _ in fake_tts.calls) == sorted(["ข้าว", "น้ำ", "กินข้าว"])
+        assert res.generated == 3 and res.cached == 1 and res.failed == 0
+        assert set(res.paths) == {(ids[0], "thai", "normal"), (ids[0], "example", "normal"),
+                                  (ids[1], "thai", "normal"), (ids[1], "example", "normal")}
+
+        again = await tts_service.ensure_card_audio(db, cards, generate=True)
+        assert again.generated == 0 and again.cached == 4
+
+    assert await _usage_count(factory) == 3
+    async with factory() as db:
+        assert await db.scalar(select(func.count(CardMedia.id))) == 4
+
+
+@pytest.mark.asyncio
+async def test_ensure_card_audio_counts_failures_and_needs_a_provider(client, fake_tts, monkeypatch):
+    ac, factory = client
+    deck_id, _ = await _deck_with_cards(factory)
+    async with factory() as db:
+        cards = (await db.scalars(select(Card).where(Card.deck_id == deck_id))).all()
+        fake_tts.fail = TTSError("quota")
+        res = await tts_service.ensure_card_audio(db, cards, fields=("thai",), generate=True)
+        assert res.failed == 2 and res.generated == 0 and not res.paths
+
+        def not_configured(s=None):
+            raise TTSNotConfigured("no key")
+
+        monkeypatch.setattr(tts_service, "get_tts_provider", not_configured)
+        with pytest.raises(TTSNotConfigured):
+            await tts_service.ensure_card_audio(db, cards, generate=True)
+
+
+@pytest.mark.asyncio
+async def test_anki_export_bundles_audio(client, fake_tts):
+    import io
+    import sqlite3
+    import tempfile
+    import zipfile
+
+    from src.utils.anki_exporter import note_guid
+
+    ac, factory = client
+    deck_id, ids = await _deck_with_cards(factory)
+
+    est = (await ac.get(f"/api/export/decks/{deck_id}/anki/audio")).json()
+    assert est["missing"] == 4 and est["cached"] == 0
+
+    def read_apkg(content):
+        z = zipfile.ZipFile(io.BytesIO(content))
+        media = json.loads(z.read("media"))
+        with tempfile.NamedTemporaryFile(suffix=".db") as f:
+            f.write(z.read("collection.anki2"))
+            f.flush()
+            notes = sqlite3.connect(f.name).execute("select guid, flds from notes").fetchall()
+        return media, {guid: flds.split("\x1f") for guid, flds in notes}
+
+    r = await ac.get(f"/api/export/decks/{deck_id}/anki")  # default: cached only, nothing cached yet
+    media, notes = read_apkg(r.content)
+    assert media == {} and fake_tts.calls == []
+    assert set(notes) == {note_guid(i) for i in ids}
+    assert all(len(f) == 8 and f[6] == "" for f in notes.values())
+
+    r = await ac.get(f"/api/export/decks/{deck_id}/anki?audio=all")
+    media, notes = read_apkg(r.content)
+    assert len(media) == 3  # ข้าว, น้ำ, shared กินข้าว
+    rice = notes[note_guid(ids[0])]
+    assert rice[0] == "ข้าว" and rice[6].startswith("[sound:") and rice[7].startswith("[sound:")
+    assert notes[note_guid(ids[2])][6] == ""  # no Thai, no audio
+    assert set(f[6][7:-1] for f in notes.values() if f[6]) <= set(media.values())
+
+    r = await ac.get(f"/api/export/decks/{deck_id}/anki?audio=none")
+    media, _ = read_apkg(r.content)
+    assert media == {}

@@ -92,8 +92,28 @@ export default function DeckDetailPage() {
     }
   )
 
-  const handleExport = () => {
-    window.open(`/api/export/decks/${id}/anki`, '_blank')
+  const handleExport = async () => {
+    // Clips not generated yet can be made for the export; ask first, since
+    // it uses speech characters and takes a moment.
+    let audio = 'cached'
+    try {
+      const { data } = await api.get(`/export/decks/${id}/anki/audio`)
+      if (data.configured && data.missing > 0) {
+        const ok = window.confirm(
+          `${data.missing} audio clip${data.missing === 1 ? '' : 's'} for this deck ` +
+            `haven't been generated yet (about ${data.missing_chars.toLocaleString()} characters ` +
+            `of your 500,000 free a month).\n\nOK: generate them and include all audio.\n` +
+            `Cancel: export with the audio that already exists.`,
+        )
+        if (ok) {
+          audio = 'all'
+          toast('Generating audio for the export, this can take a minute…')
+        }
+      }
+    } catch {
+      // estimate failed: export with whatever audio exists
+    }
+    window.open(`/api/export/decks/${id}/anki?audio=${audio}`, '_blank')
   }
 
   return (

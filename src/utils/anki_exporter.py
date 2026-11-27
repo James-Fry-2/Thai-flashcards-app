@@ -3,10 +3,17 @@ Generates Anki .apkg files from a list of Card objects using genanki.
 
 IMPORTANT: THAI_MODEL_ID must never change once any .apkg has been generated.
 Changing it causes Anki to treat all cards as a new, duplicate note type.
+New fields go at the end of the field list (Audio/ExampleAudio were added
+after the first six); Anki offers to merge the updated note type on import.
+
+Each note's GUID is derived from the card id, so re-exporting a deck after
+cards change (or gain audio) updates the notes in Anki instead of adding
+duplicates.
 """
 import os
 import tempfile
-from typing import List, TYPE_CHECKING
+from pathlib import Path
+from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.db.models.card import Card
@@ -71,6 +78,8 @@ def _get_model():
             {"name": "ExampleThai"},
             {"name": "ExampleEnglish"},
             {"name": "CardType"},
+            {"name": "Audio"},
+            {"name": "ExampleAudio"},
         ],
         templates=[
             {
@@ -79,6 +88,7 @@ def _get_model():
                     <div class="thai-front">{{Thai}}</div>
                     <div class="romanization">{{Romanization}}</div>
                     <div class="badge">{{CardType}}</div>
+                    {{Audio}}
                 """,
                 "afmt": """
                     {{FrontSide}}
@@ -86,7 +96,7 @@ def _get_model():
                     <div class="english">{{English}}</div>
                     {{#ExampleThai}}
                     <div class="example">
-                        <div class="thai-ex">{{ExampleThai}}</div>
+                        <div class="thai-ex">{{ExampleThai}} {{ExampleAudio}}</div>
                         <div>{{ExampleEnglish}}</div>
                     </div>
                     {{/ExampleThai}}
@@ -97,15 +107,39 @@ def _get_model():
     )
 
 
-def export_deck_to_apkg(deck_name: str, deck_id_seed: int, cards: List["Card"]) -> bytes:
-    """Returns raw .apkg bytes for streaming to the client."""
+def note_guid(card_id: int) -> str:
+    import genanki
+    return genanki.guid_for("dek-kard-card", card_id)
+
+
+def export_deck_to_apkg(
+    deck_name: str,
+    deck_id_seed: int,
+    cards: List["Card"],
+    audio: Optional[dict[tuple[int, str], Path]] = None,
+) -> bytes:
+    """Returns raw .apkg bytes for streaming to the client.
+
+    *audio* maps (card_id, "thai"|"example") to an mp3 on disk; those clips
+    are bundled into the package and referenced as [sound:...] fields.
+    """
     import genanki
 
+    audio = audio or {}
     model = _get_model()
     anki_deck = genanki.Deck(
         deck_id_seed % (2**31 - 1),
         deck_name,
     )
+
+    media_files: dict[str, str] = {}
+
+    def sound(card_id: int, field: str) -> str:
+        path = audio.get((card_id, field))
+        if path is None:
+            return ""
+        media_files[path.name] = str(path)
+        return f"[sound:{path.name}]"
 
     for card in cards:
         note = genanki.Note(
@@ -117,11 +151,14 @@ def export_deck_to_apkg(deck_name: str, deck_id_seed: int, cards: List["Card"]) 
                 card.example_thai or "",
                 card.example_english or "",
                 card.card_type or "vocab",
+                sound(card.id, "thai"),
+                sound(card.id, "example"),
             ],
+            guid=note_guid(card.id),
         )
         anki_deck.add_note(note)
 
-    package = genanki.Package(anki_deck)
+    package = genanki.Package(anki_deck, media_files=list(media_files.values()))
     tmp = tempfile.NamedTemporaryFile(suffix=".apkg", delete=False)
     tmp.close()
 
